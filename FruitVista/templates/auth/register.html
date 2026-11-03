@@ -1,0 +1,199 @@
+{% extends 'auth/layout.html' %}
+
+{% block title %}Create your account &middot; {{ app_name }}{% endblock %}
+
+{% block auth_content %}
+<header class="auth-panel-header">
+    <h1>Create your FruitVista account</h1>
+    <p>Register as a fruit market administrator or vendor to access the dashboard.</p>
+</header>
+
+{% if errors.form %}
+<div class="form-alert" role="alert">
+    <span aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7.5v5"></path>
+            <path d="M12 16.2h.01"></path>
+        </svg>
+    </span>
+    <p>{{ errors.form }}</p>
+</div>
+{% endif %}
+
+<form class="form" method="post" action="{{ url_for('auth.register') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <!-- Full name -->
+    <div class="form-field{% if errors.full_name %} has-error{% endif %}">
+        <label for="full_name">Full name</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </span>
+            <input type="text" id="full_name" name="full_name" value="{{ form.full_name }}"
+                   placeholder="e.g. Ramesh Gowda" maxlength="80" required
+                   autocomplete="name"
+                   {% if errors.full_name %}aria-invalid="true" aria-describedby="full_name-error"{% endif %}>
+        </div>
+        {% if errors.full_name %}
+        <p class="form-error" id="full_name-error">{{ errors.full_name }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Email address -->
+    <div class="form-field{% if errors.email %} has-error{% endif %}">
+        <label for="email">Email address</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                    <path d="m3.5 7 8.5 6 8.5-6"></path>
+                </svg>
+            </span>
+            <input type="email" id="email" name="email" value="{{ form.email }}"
+                   placeholder="name@example.com" maxlength="120" required
+                   autocomplete="email"
+                   {% if errors.email %}aria-invalid="true" aria-describedby="email-error"{% endif %}>
+        </div>
+        {% if errors.email %}
+        <p class="form-error" id="email-error">{{ errors.email }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Mobile number -->
+    <div class="form-field{% if errors.mobile %} has-error{% endif %}">
+        <label for="mobile">Mobile number</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="7" y="2" width="10" height="20" rx="2.5"></rect>
+                    <path d="M11 18.5h2"></path>
+                </svg>
+            </span>
+            <input type="tel" id="mobile" name="mobile" value="{{ form.mobile }}"
+                   placeholder="9876543210" maxlength="15" required
+                   autocomplete="tel"
+                   {% if errors.mobile %}aria-invalid="true" aria-describedby="mobile-error"{% endif %}>
+        </div>
+        <p class="form-hint">10-digit Indian mobile number, with or without +91.</p>
+        {% if errors.mobile %}
+        <p class="form-error" id="mobile-error">{{ errors.mobile }}</p>
+        {% endif %}
+    </div>
+
+    <!-- District -->
+    <div class="form-field{% if errors.district %} has-error{% endif %}">
+        <label for="district">District</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 21.5s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"></path>
+                    <circle cx="12" cy="10.2" r="2.6"></circle>
+                </svg>
+            </span>
+            <select id="district" name="district" required
+                    {% if errors.district %}aria-invalid="true" aria-describedby="district-error"{% endif %}>
+                <option value="" {% if not form.district %}selected{% endif %} disabled>
+                    Select your district
+                </option>
+                {% for district in districts %}
+                <option value="{{ district }}" {% if form.district == district %}selected{% endif %}>
+                    {{ district }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if errors.district %}
+        <p class="form-error" id="district-error">{{ errors.district }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Password -->
+    <div class="form-field{% if errors.password %} has-error{% endif %}">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="10" width="16" height="10" rx="2.5"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                </svg>
+            </span>
+            <input type="password" id="password" name="password" placeholder="At least 8 characters"
+                   minlength="8" maxlength="128" required autocomplete="new-password"
+                   {% if errors.password %}aria-invalid="true" aria-describedby="password-error"{% endif %}>
+            <button class="input-toggle" type="button" data-toggle-password="password"
+                    aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4l16 16"></path>
+                    <path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.4 3.2"></path>
+                    <path d="M6.3 7.9A16.9 16.9 0 0 0 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 3.3-.6"></path>
+                    <path d="M10.3 10.4a2.6 2.6 0 0 0 3.5 3.5"></path>
+                </svg>
+            </button>
+        </div>
+        <p class="form-hint">Use at least 8 characters with at least one letter and one number.</p>
+        {% if errors.password %}
+        <p class="form-error" id="password-error">{{ errors.password }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Confirm password -->
+    <div class="form-field{% if errors.confirm_password %} has-error{% endif %}">
+        <label for="confirm_password">Confirm password</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="10" width="16" height="10" rx="2.5"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                    <path d="m9.5 15 1.8 1.8 3.2-3.6"></path>
+                </svg>
+            </span>
+            <input type="password" id="confirm_password" name="confirm_password"
+                   placeholder="Re-enter your password" minlength="8" maxlength="128" required
+                   autocomplete="new-password"
+                   {% if errors.confirm_password %}aria-invalid="true" aria-describedby="confirm_password-error"{% endif %}>
+            <button class="input-toggle" type="button" data-toggle-password="confirm_password"
+                    aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4l16 16"></path>
+                    <path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.4 3.2"></path>
+                    <path d="M6.3 7.9A16.9 16.9 0 0 0 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 3.3-.6"></path>
+                    <path d="M10.3 10.4a2.6 2.6 0 0 0 3.5 3.5"></path>
+                </svg>
+            </button>
+        </div>
+        {% if errors.confirm_password %}
+        <p class="form-error" id="confirm_password-error">{{ errors.confirm_password }}</p>
+        {% endif %}
+    </div>
+
+    <button class="btn btn-primary btn-block" type="submit">Register</button>
+</form>
+
+<p class="auth-switch">
+    Already registered?
+    <a href="{{ url_for('auth.login') }}">Sign in to your account</a>
+</p>
+{% endblock %}

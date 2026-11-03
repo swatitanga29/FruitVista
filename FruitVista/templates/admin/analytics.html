@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales Analytics &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Sales Analytics</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Sales Analytics</h1>
+            <p>
+                Revenue, quantity, profit and wastage for the selected period,
+                grouped by day, month, year, fruit, category and district. Every
+                figure is totalled in the database, so the charts stay fast even
+                across the whole dataset.
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="btn btn-ghost" href="{{ url_for('sales.records') }}">Sales Records</a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <form class="profile-card filter-card analytics-filters" method="get"
+          action="{{ url_for('analytics.index') }}" data-analytics-form>
+        <div class="form-row form-row-filters">
+            <div class="form-field">
+                <label for="date_from">Start date</label>
+                <input type="date" id="date_from" name="date_from"
+                       value="{{ filters['date_from'] }}"
+                       {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                       {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+            </div>
+
+            <div class="form-field">
+                <label for="date_to">End date</label>
+                <input type="date" id="date_to" name="date_to"
+                       value="{{ filters['date_to'] }}"
+                       {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                       {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+            </div>
+
+            <div class="form-field">
+                <label for="district_id">District</label>
+                <select id="district_id" name="district_id">
+                    <option value="">All districts</option>
+                    {% for district in options['districts'] %}
+                    <option value="{{ district['id'] }}"
+                            {% if filters['district_id'] == district['id'] %}selected{% endif %}>
+                        {{ district['name'] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="category">Fruit category</label>
+                <select id="category" name="category">
+                    <option value="">All categories</option>
+                    {% for category in options['categories'] %}
+                    <option value="{{ category }}"
+                            {% if filters['category'] == category %}selected{% endif %}>
+                        {{ category }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="fruit_id">Fruit name</label>
+                <select id="fruit_id" name="fruit_id">
+                    <option value="">All fruits</option>
+                    {% for category in options['categories'] %}
+                    <optgroup label="{{ category }}">
+                        {% for fruit in options['fruits'] if fruit['category'] == category %}
+                        <option value="{{ fruit['id'] }}"
+                                {% if filters['fruit_id'] == fruit['id'] %}selected{% endif %}>
+                            {{ fruit['name'] }}
+                        </option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="record_source">Record source</label>
+                <select id="record_source" name="record_source">
+                    <option value="all"{% if filters['record_source'] == 'all' %} selected{% endif %}>All records</option>
+                    <option value="historical"{% if filters['record_source'] == 'historical' %} selected{% endif %}>Historical (synthetic dataset)</option>
+                    <option value="manual"{% if filters['record_source'] == 'manual' %} selected{% endif %}>Manual entries</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filter-actions">
+            <button class="btn btn-primary" type="submit">Apply filters</button>
+            <a class="btn btn-ghost" href="{{ url_for('analytics.index') }}">Reset</a>
+            <span class="filter-status" data-analytics-status role="status" aria-live="polite">
+                Showing the full stored range.
+            </span>
+        </div>
+    </form>
+
+    <div data-analytics-root
+         data-api-url="{{ url_for('analytics.data') }}">
+
+        <!-- Summary cards --------------------------------------------- -->
+        <section class="metric-grid" aria-label="Summary">
+            <article class="metric-card">
+                <span class="metric-icon icon-green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v18"></path>
+                        <path d="M16.5 7.5c0-1.7-2-2.5-4.5-2.5s-4.5.8-4.5 2.5S9.5 10 12 10.5s4.5 1.3 4.5 3-2 2.5-4.5 2.5-4.5-.8-4.5-2.5"></path>
+                    </svg>
+                </span>
+                <p class="metric-label">Total Sales Revenue</p>
+                <p class="metric-value" data-metric="revenue">&ndash;</p>
+                <p class="metric-hint">quantity sold &times; selling price</p>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-icon icon-blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3c3 4.5 5 7.6 5 10.2a5 5 0 0 1-10 0C7 10.6 9 7.5 12 3Z"></path>
+                    </svg>
+                </span>
+                <p class="metric-label">Total Quantity Sold</p>
+                <p class="metric-value" data-metric="quantity">&ndash;</p>
+                <p class="metric-hint">kilograms</p>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-icon icon-purple" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 17 10 11l3.5 3.5L20 8"></path>
+                        <path d="M15 8h5v5"></path>
+                    </svg>
+                </span>
+                <p class="metric-label">Total Profit</p>
+                <p class="metric-value" data-metric="profit">&ndash;</p>
+                <p class="metric-hint" data-metric-hint="profit">net profit</p>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-icon icon-amber" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v4"></path>
+                        <path d="M6.5 6.5 12 9l5.5-2.5"></path>
+                        <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7"></path>
+                    </svg>
+                </span>
+                <p class="metric-label">Total Wastage</p>
+                <p class="metric-value" data-metric="wastage_kg">&ndash;</p>
+                <p class="metric-hint" data-metric-hint="wastage_kg">damaged quantity in kilograms</p>
+            </article>
+
+            <article class="metric-card">
+                <span class="metric-icon icon-green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 6.5C4 5.1 7.6 4 12 4s8 1.1 8 2.5S16.4 9 12 9 4 7.9 4 6.5Z"></path>
+                        <path d="M4 6.5v11C4 18.9 7.6 20 12 20s8-1.1 8-2.5v-11"></path>
+                        <path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"></path>
+                    </svg>
+                </span>
+                <p class="metric-label">Total Sales Records</p>
+                <p class="metric-value" data-metric="records">&ndash;</p>
+                <p class="metric-hint">rows matching the filters</p>
+            </article>
+        </section>
+
+        <!-- Historical vs manual ------------------------------------- -->
+        <section class="profile-card source-card">
+            <h2>Where these records come from</h2>
+            <p class="profile-note">
+                Historical rows are the synthetic dataset imported from the CSV
+                file. Manual rows were entered by an administrator in the Sales
+                Entry page. They are always kept apart.
+            </p>
+            <ul class="source-list" data-analytics-split></ul>
+        </section>
+
+        <div class="analytics-empty" data-analytics-empty hidden>
+            <p>
+                No records match these filters. Widen the date range or clear a
+                filter to see the charts.
+            </p>
+        </div>
+
+        <div class="analytics-warning" data-analytics-warning hidden>
+            <p data-analytics-warning-text></p>
+        </div>
+
+        <!-- Charts ---------------------------------------------------- -->
+        <div class="chart-grid">
+            <article class="chart-card is-wide">
+                <header class="chart-head">
+                    <h3>Daily sales trend</h3>
+                    <p data-chart-hint="daily">Revenue and quantity per day</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartDaily" aria-label="Daily sales trend"></canvas></div>
+            </article>
+
+            <article class="chart-card is-wide">
+                <header class="chart-head">
+                    <h3>Monthly sales trend</h3>
+                    <p>Revenue and quantity per calendar month</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartMonthly" aria-label="Monthly sales trend"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>Yearly sales comparison</h3>
+                    <p>Revenue by year, with net profit where recorded</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartYearly" aria-label="Yearly sales comparison"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>Fruit category-wise sales</h3>
+                    <p>Share of revenue by fruit category</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartCategory" aria-label="Fruit category-wise sales"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>District-wise revenue comparison</h3>
+                    <p>Revenue and quantity for each district</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartDistrict" aria-label="District-wise revenue comparison"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>Fruit-wise sales performance</h3>
+                    <p data-chart-hint="fruit">Top 10 fruits by revenue</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartFruit" aria-label="Fruit-wise sales performance"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>Top 5 best-selling fruits</h3>
+                    <p>Ranked by quantity sold in kilograms</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartTop" aria-label="Top 5 best-selling fruits"></canvas></div>
+            </article>
+
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>Bottom 5 lowest-selling fruits</h3>
+                    <p>Ranked by quantity sold, among fruits sold in this range</p>
+                </header>
+                <div class="chart-canvas"><canvas id="chartBottom" aria-label="Bottom 5 lowest-selling fruits"></canvas></div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Method notes ------------------------------------------------- -->
+    <section class="profile-card">
+        <h2>How these figures are calculated</h2>
+        <ul class="schema-list" data-analytics-notes>
+            <li>Calculating the figures for the selected filters.</li>
+        </ul>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

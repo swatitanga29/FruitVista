@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set status_labels = {
+    'available': 'Available',
+    'low_stock': 'Low Stock',
+    'out_of_stock': 'Out of Stock'
+} %}
+
+{% set status_classes = {
+    'available': 'stock-available',
+    'low_stock': 'stock-low',
+    'out_of_stock': 'stock-out'
+} %}
+
+{% block title %}Inventory Management &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Inventory Management</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Inventory Management</h1>
+            <p>
+                Opening and closing stock, purchases, sales and damaged
+                quantities for every fruit in every district. Totals are added
+                up in the database, so the page stays fast across the whole
+                dataset.
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('inventory.purchase') }}">Record purchase</a>
+            <a class="btn btn-ghost" href="{{ url_for('inventory.adjustment') }}">Stock adjustment</a>
+            <a class="btn btn-ghost" href="{{ url_for('inventory.movements') }}">Stock movement history</a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Filters</h2>
+        <p class="profile-note">
+            Combine any of the fields below. The stock status filter uses the
+            remaining (closing) stock compared with the reorder level.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('inventory.index') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">Start date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from"
+                               value="{{ filters.date_from }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">End date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to"
+                               value="{{ filters.date_to }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="stock_status">Stock status</label>
+                    <div class="input-wrap">
+                        <select id="stock_status" name="stock_status">
+                            <option value="">All stock statuses</option>
+                            {% for value, label in options['statuses'] %}
+                            <option value="{{ value }}"
+                                    {% if filters.stock_status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Apply filters</button>
+                <a class="btn btn-ghost" href="{{ url_for('inventory.index') }}">Reset</a>
+                <span class="filter-status">
+                    Showing {{ "{:,}".format(pager.total) }} inventory rows.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Summary cards ----------------------------------------------------- -->
+    <section class="metric-grid" aria-label="Stock summary">
+        <article class="metric-card">
+            <span class="metric-icon icon-green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                    <path d="M3 7v10l9 4 9-4V7"></path>
+                    <path d="M12 11v10"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Available Stock</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.available_stock) }} kg</p>
+            <p class="metric-hint">opening stock + purchased quantity + adjustment</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-blue" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 6.5C4 5.1 7.6 4 12 4s8 1.1 8 2.5S16.4 9 12 9 4 7.9 4 6.5Z"></path>
+                    <path d="M4 6.5v11C4 18.9 7.6 20 12 20s8-1.1 8-2.5v-11"></path>
+                    <path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Opening Stock</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.opening_stock) }} kg</p>
+            <p class="metric-hint">stock carried into each day of the selection</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-purple" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12h12"></path>
+                    <path d="M12 6l6 6-6 6"></path>
+                    <path d="M20 4v16"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Purchased Quantity</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.purchased_quantity) }} kg</p>
+            <p class="metric-hint">dataset purchases plus purchases recorded here</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 17 10 11l3.5 3.5L20 8"></path>
+                    <path d="M15 8h5v5"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Closing Stock</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.closing_stock) }} kg</p>
+            <p class="metric-hint">available stock - quantity sold - damaged quantity</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3 2 20h20L12 3Z"></path>
+                    <path d="M12 9.5v4"></path>
+                    <path d="M12 17h.01"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Low-stock Fruits</p>
+            <p class="metric-value">{{ "{:,}".format(alert_count) }}</p>
+            <p class="metric-hint">
+                {% if latest_date %}
+                district and fruit positions at or below their reorder level on {{ latest_date }}
+                {% else %}
+                district and fruit positions at or below their reorder level
+                {% endif %}
+            </p>
+        </article>
+    </section>
+
+    <!-- Low-stock alerts -------------------------------------------------- -->
+    {% if alert_count %}
+    <section class="profile-card alert-panel">
+        <header class="alert-panel-head">
+            <h2>Low-stock alerts</h2>
+            <p class="profile-note">
+                {{ "{:,}".format(alert_count) }} position{{ '' if alert_count == 1 else 's' }}
+                need attention on {{ latest_date }}. The lowest remaining stock is
+                listed first.
+            </p>
+        </header>
+
+        <ul class="alert-list">
+            {% for alert in alerts %}
+            <li class="alert-item">
+                <span class="alert-name">
+                    {{ alert['fruit_name'] }}
+                    <span class="alert-place">{{ alert['district_name'] }}</span>
+                </span>
+                <span class="alert-detail">
+                    {{ "{:,.2f}".format(alert['closing_stock']) }} kg left
+                    &middot; reorder level {{ "{:,.2f}".format(alert['reorder_level']) }} kg
+                </span>
+                <span class="stock-chip {{ status_classes.get(alert['stock_status'], '') }}">
+                    {{ status_labels.get(alert['stock_status'], alert['stock_status']) }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        {% if alert_count > alerts|length %}
+        <p class="alert-more">
+            Showing the {{ alerts|length }} lowest of {{ "{:,}".format(alert_count) }}
+            positions. Use the filters above to narrow the list.
+        </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- District and category summaries ----------------------------------- -->
+    <div class="summary-tables">
+        <section class="profile-card summary-table-card">
+            <h2>District-wise stock summary</h2>
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">Stock totals for each district</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">District</th>
+                            <th scope="col" class="is-numeric">Opening (kg)</th>
+                            <th scope="col" class="is-numeric">Purchased (kg)</th>
+                            <th scope="col" class="is-numeric">Available (kg)</th>
+                            <th scope="col" class="is-numeric">Sold (kg)</th>
+                            <th scope="col" class="is-numeric">Damaged (kg)</th>
+                            <th scope="col" class="is-numeric">Closing (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in district %}
+                        <tr>
+                            <td>{{ row['label'] }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['opening_stock']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['purchased_quantity']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['available_stock']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['quantity_sold']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['closing_stock']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="profile-card summary-table-card">
+            <h2>Fruit-category-wise stock summary</h2>
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">Stock totals for each fruit category</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Fruit category</th>
+                            <th scope="col" class="is-numeric">Available (kg)</th>
+                            <th scope="col" class="is-numeric">Sold (kg)</th>
+                            <th scope="col" class="is-numeric">Damaged (kg)</th>
+                            <th scope="col" class="is-numeric">Closing (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in category %}
+                        <tr>
+                            <td>{{ category_labels.get(row['label'], row['label']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['available_stock']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['quantity_sold']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['closing_stock']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Charts ------------------------------------------------------------ -->
+    <div class="chart-grid inventory-charts">
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Closing stock by district</h3>
+                <p>Remaining kilograms for each district in the selection</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartStockDistrict" aria-label="Closing stock by district"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Closing stock by fruit category</h3>
+                <p>Share of the remaining stock held by each category</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartStockCategory" aria-label="Closing stock by fruit category"></canvas></div>
+        </article>
+    </div>
+
+    <!-- Inventory records ------------------------------------------------- -->
+    <h2 class="inventory-table-heading">Inventory records</h2>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table inventory-table">
+            <caption class="visually-hidden">Inventory records for the selected filters</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">District</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Fruit</th>
+                    <th scope="col" class="is-numeric">Opening (kg)</th>
+                    <th scope="col" class="is-numeric">Purchased (kg)</th>
+                    <th scope="col" class="is-numeric">Available (kg)</th>
+                    <th scope="col" class="is-numeric">Sold (kg)</th>
+                    <th scope="col" class="is-numeric">Damaged (kg)</th>
+                    <th scope="col" class="is-numeric">Closing (kg)</th>
+                    <th scope="col" class="is-numeric">Reorder level (kg)</th>
+                    <th scope="col">Source</th>
+                    <th scope="col">Stock status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row['record_date'] }}</td>
+                    <td>{{ row['district_name'] }}</td>
+                    <td>{{ category_labels.get(row['fruit_category'], row['fruit_category']) }}</td>
+                    <td>{{ row['fruit_name'] }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['opening_stock']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['purchased_quantity']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['available_stock']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['quantity_sold']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['closing_stock']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['reorder_level']) }}</td>
+                    <td><span class="source-tag">{{ row['source_label'] }}</span></td>
+                    <td>
+                        <span class="stock-chip {{ status_classes.get(row['stock_status'], '') }}">
+                            {{ status_labels.get(row['stock_status'], row['stock_status']) }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pager.pages > 1 %}
+    <nav class="pager" aria-label="Inventory pages">
+        <span class="pager-info">
+            Showing rows {{ "{:,}".format(pager.first_row) }}&ndash;{{ "{:,}".format(pager.last_row) }}
+            of {{ "{:,}".format(pager.total) }}
+        </span>
+        <div class="pager-controls">
+            {% if pager.has_prev %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('inventory.index', **pager.prev_query) }}">Previous</a>
+            {% endif %}
+            <span class="pager-page">Page {{ pager.page }} of {{ pager.pages }}</span>
+            {% if pager.has_next %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('inventory.index', **pager.next_query) }}">Next</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                <path d="M3 7v10l9 4 9-4V7"></path>
+                <path d="M12 11v10"></path>
+            </svg>
+        </span>
+        <h2>No inventory records found</h2>
+        <p>
+            Nothing matches the filters above. Widen the date range or clear a
+            filter to see the stock position.
+        </p>
+        <a class="btn btn-ghost" href="{{ url_for('inventory.index') }}">Reset filters</a>
+    </div>
+    {% endif %}
+
+    <!-- Method notes ------------------------------------------------------ -->
+    <section class="profile-card">
+        <h2>How these figures are calculated</h2>
+        <ul class="schema-list">
+            {% for note in notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+        <p class="profile-note">{{ no_stock_notice }}</p>
+        <p class="profile-note">{{ synthetic_notice }}</p>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="inventory-chart-data" type="application/json">{{ {
+    'district': district,
+    'category': category
+} | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

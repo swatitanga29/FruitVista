@@ -1,0 +1,452 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Import &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Data Import</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Historical Data Import</h1>
+            <p>
+                Read the CSV dataset from the project folder and copy its rows
+                into the existing database. Manual sales records are never
+                changed and a repeated import adds nothing new.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-ghost" href="{{ url_for('sales.records') }}">Sales Records</a>
+        </div>
+    </header>
+
+    <!-- Synthetic data label --------------------------------------------- -->
+    <div class="notice notice-inline" role="note">
+        <span class="notice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3 2.5 19.5h19L12 3Z"></path>
+                <path d="M12 9.5v4.5"></path>
+                <path d="M12 17.2h.01"></path>
+            </svg>
+        </span>
+        <p>
+            <strong>Synthetic historical data.</strong> This dataset is
+            computer-generated sample data created for {{ app_name }}. It is not
+            a verified record of real market observations and must not be
+            presented as official market figures.
+        </p>
+    </div>
+
+    {% if not summary %}
+    <!-- No dataset found -------------------------------------------------- -->
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                <path d="M14 3v5h5"></path>
+                <path d="M8.5 13h7"></path>
+                <path d="M8.5 17h4"></path>
+            </svg>
+        </span>
+        <h2>No dataset found</h2>
+        <p>
+            The project folder does not contain a CSV dataset yet. Place the
+            historical dataset file in the FruitVista folder (or in its
+            <code>data</code> folder) and reload this page.
+        </p>
+        <a class="btn btn-primary" href="{{ url_for('data_import.index') }}">Check again</a>
+    </div>
+    {% else %}
+
+    <!-- Dataset detected -------------------------------------------------- -->
+    <section class="profile-card dataset-card">
+        <header class="dataset-card-head">
+            <div>
+                <h2>Dataset detected</h2>
+                <p class="profile-note">
+                    Found by inspecting the project folder. The file name is
+                    never assumed.
+                </p>
+            </div>
+            <span class="module-state module-state-live">Ready</span>
+        </header>
+
+        <dl class="account-grid dataset-grid">
+            <div class="account-card">
+                <dt>CSV file name</dt>
+                <dd class="dataset-strong">{{ summary['file_name'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>File size</dt>
+                <dd>{{ summary['file_size'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Last modified</dt>
+                <dd>{{ summary['modified_at'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Total rows</dt>
+                <dd>{{ "{:,}".format(summary['row_count']) }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Columns in file</dt>
+                <dd>{{ summary['column_count'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Columns stored</dt>
+                <dd>{{ summary['stored_column_count'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Date range</dt>
+                <dd>{{ summary['date_from'] }} &rarr; {{ summary['date_to'] }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Days covered</dt>
+                <dd>{{ "{:,}".format(summary['days']) }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Districts</dt>
+                <dd>{{ summary['districts']|length }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Fruits</dt>
+                <dd>{{ summary['fruits']|length }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Categories</dt>
+                <dd>{{ summary['categories']|length }}</dd>
+            </div>
+            <div class="account-card">
+                <dt>Data label</dt>
+                <dd>{{ summary['dataset_label'] }}</dd>
+            </div>
+        </dl>
+
+        <details class="dataset-details">
+            <summary>Column mapping and unused columns</summary>
+            <p class="profile-note">
+                Only the columns below are written to the database.
+                {% if summary['unmapped_columns'] %}
+                The remaining columns
+                ({% for column in summary['unmapped_columns'] %}<code>{{ column }}</code>{% if not loop.last %}, {% endif %}{% endfor %})
+                are read for context but not stored, because they are derived
+                or constant.
+                {% else %}
+                Every column in the file is stored.
+                {% endif %}
+            </p>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <caption class="visually-hidden">Dataset column mapping</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">CSV column</th>
+                            <th scope="col">Stored as</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for column in summary['mapped_columns'] %}
+                        <tr>
+                            <td><code>{{ column['source'] }}</code></td>
+                            <td><code>{{ column['target'] }}</code></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </section>
+
+    <!-- Import controls --------------------------------------------------- -->
+    <section class="profile-card import-card" data-import-root
+             data-start-url="{{ url_for('data_import.start') }}"
+             data-run-url="{{ url_for('data_import.run') }}"
+             data-csrf="{{ csrf_token() }}"
+             data-chunk-size="5000">
+        <h2>Run the import</h2>
+        <p class="profile-note">
+            The import runs in slices so you can see real progress. Each slice
+            is one database transaction: if a slice fails it is rolled back and
+            the import stops safely.
+        </p>
+
+        <div class="import-actions">
+            <button class="btn btn-primary" type="button" data-import-start>
+                Import historical data
+            </button>
+            <span class="import-hint" data-import-status role="status" aria-live="polite">
+                Ready when you are. Nothing is written until you start.
+            </span>
+        </div>
+
+        <div class="progress-shell" data-import-progress hidden>
+            <div class="progress-track" role="progressbar" aria-valuemin="0"
+                 aria-valuemax="100" aria-valuenow="0" data-import-bar-track>
+                <span class="progress-bar" data-import-bar style="width: 0%"></span>
+            </div>
+            <div class="progress-meta">
+                <span data-import-percent>0%</span>
+                <span>
+                    <span data-import-processed>0</span> of
+                    <span data-import-total>0</span> rows
+                </span>
+            </div>
+        </div>
+
+        <!-- Live counters -->
+        <div class="summary-strip import-counters">
+            <div class="summary-item">
+                <span class="summary-label">Rows imported</span>
+                <span class="summary-value" data-import-imported>0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Duplicates prevented</span>
+                <span class="summary-value" data-import-duplicates>0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Rows skipped</span>
+                <span class="summary-value" data-import-skipped>0</span>
+            </div>
+        </div>
+
+        <!-- Result panel, revealed when the import finishes -->
+        <div class="import-result" data-import-result hidden>
+            <h3 data-import-result-title>Import finished</h3>
+            <dl class="result-grid">
+                <div class="result-item">
+                    <dt>Total rows processed</dt>
+                    <dd data-result="csv_rows">-</dd>
+                </div>
+                <div class="result-item">
+                    <dt>Successfully imported</dt>
+                    <dd data-result="imported_rows">-</dd>
+                </div>
+                <div class="result-item">
+                    <dt>Duplicates prevented</dt>
+                    <dd data-result="duplicate_rows">-</dd>
+                </div>
+                <div class="result-item">
+                    <dt>Rows skipped</dt>
+                    <dd data-result="skipped_rows">-</dd>
+                </div>
+                <div class="result-item">
+                    <dt>Historical rows in database</dt>
+                    <dd data-result="historical_rows_in_db">-</dd>
+                </div>
+                <div class="result-item">
+                    <dt>Manual rows in database</dt>
+                    <dd data-result="manual_rows_in_db">-</dd>
+                </div>
+            </dl>
+
+            <div class="skip-report" data-import-skip-report hidden>
+                <h4>Skipped rows and reasons</h4>
+                <ul class="reason-list" data-import-reasons></ul>
+            </div>
+
+            <p class="profile-note">
+                Reload this page to refresh the district coverage and the import
+                history below.
+                <a href="{{ url_for('data_import.index') }}">Reload</a>
+            </p>
+        </div>
+
+        <div class="form-alert" data-import-error role="alert" hidden>
+            <span aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7.5v5"></path>
+                    <path d="M12 16.2h.01"></path>
+                </svg>
+            </span>
+            <p data-import-error-text></p>
+        </div>
+    </section>
+
+    <!-- Current database contents ---------------------------------------- -->
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Historical rows stored</span>
+            <span class="summary-value">{{ "{:,}".format(counts['historical']) }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Manual rows stored</span>
+            <span class="summary-value">{{ "{:,}".format(counts['manual']) }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Table used</span>
+            <span class="summary-value">{{ summary['table'] }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Record source</span>
+            <span class="summary-value">'{{ summary['record_source'] }}'</span>
+        </div>
+    </div>
+
+    <!-- Coverage by district --------------------------------------------- -->
+    <section class="profile-card">
+        <h2>Imported coverage by district</h2>
+        <p class="profile-note">
+            Historical rows already in the database, grouped by district.
+        </p>
+
+        {% if coverage %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <caption class="visually-hidden">Historical rows per district</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">District</th>
+                        <th scope="col" class="is-numeric">Historical rows</th>
+                        <th scope="col">First date</th>
+                        <th scope="col">Last date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in coverage %}
+                    <tr>
+                        <td>{{ row['district_name'] }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(row['total']) }}</td>
+                        <td>{{ row['first_date'] }}</td>
+                        <td>{{ row['last_date'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="profile-note">
+            No historical rows are stored yet. Run the import above to fill this
+            table.
+        </p>
+        {% endif %}
+    </section>
+
+    <!-- Table and schema used -------------------------------------------- -->
+    <section class="profile-card">
+        <h2>Table and schema used</h2>
+        <p class="profile-note">
+            The import reuses the existing <code>daily_records</code> table -
+            no duplicate table and no duplicate column was added. Import runs
+            are recorded separately in <code>import_batches</code>.
+        </p>
+
+        <ul class="schema-list">
+            <li>
+                <strong>Table:</strong> <code>daily_records</code> - one row per
+                day, district and fruit.
+            </li>
+            <li>
+                <strong>Distinguisher:</strong> <code>record_source</code> is
+                <code>'historical'</code> for this dataset and
+                <code>'manual'</code> for entries made in the Sales Entry page.
+            </li>
+            <li>
+                <strong>Duplicate key:</strong> UNIQUE
+                <code>(record_date, district_id, fruit_id, record_source)</code>,
+                combined with <code>INSERT OR IGNORE</code>.
+            </li>
+            <li>
+                <strong>Import tracking:</strong> <code>import_batches</code>
+                stores the file name, its hash, the row counters and the run
+                status.
+            </li>
+            <li>
+                <strong>Safety:</strong> existing rows are only ever read. The
+                import never updates, deletes or overwrites a record, and every
+                slice runs inside a transaction that is rolled back on failure.
+            </li>
+        </ul>
+    </section>
+
+    <!-- Recent import runs ------------------------------------------------ -->
+    <section class="profile-card">
+        <h2>Recent import runs</h2>
+        <p class="profile-note">
+            The last few imports, newest first. A completed run with
+            <code>0</code> imported rows means the file was already imported.
+        </p>
+
+        {% if batches %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <caption class="visually-hidden">Recent import runs</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Started</th>
+                        <th scope="col">File</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="is-numeric">Processed</th>
+                        <th scope="col" class="is-numeric">Imported</th>
+                        <th scope="col" class="is-numeric">Duplicates</th>
+                        <th scope="col" class="is-numeric">Skipped</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in batches %}
+                    <tr>
+                        <td>{{ batch['started_at'] }}</td>
+                        <td><code>{{ batch['file_name'] }}</code></td>
+                        <td>
+                            <span class="status-chip status-{{ batch['status'] }}">{{ batch['status'] }}</span>
+                        </td>
+                        <td class="is-numeric">{{ "{:,}".format(batch['total_rows']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(batch['imported_rows']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(batch['duplicate_rows']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(batch['skipped_rows']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="profile-note">No import has been run yet.</p>
+        {% endif %}
+    </section>
+
+    <!-- How to verify ------------------------------------------------------ -->
+    <section class="profile-card">
+        <h2>How to verify the imported records</h2>
+        <p class="profile-note">
+            Open a terminal in the FruitVista folder, activate the virtual
+            environment and start a SQLite session.
+        </p>
+
+        <pre class="code-block"><code>.\.venv\Scripts\python -c "import sqlite3; db = sqlite3.connect('database/fruitvista.db'); print(db.execute(\"SELECT COUNT(*) FROM daily_records WHERE record_source = 'historical'\").fetchone()[0]); print(db.execute(\"SELECT COUNT(*) FROM daily_records WHERE record_source = 'manual'\").fetchone()[0])"</code></pre>
+
+        <ul class="schema-list">
+            <li>
+                The first number is the historical row count and should match
+                <strong>Successfully imported</strong> above (plus any earlier
+                completed import).
+            </li>
+            <li>
+                The second number is the manual row count. It must be unchanged
+                by the import.
+            </li>
+            <li>
+                Re-running the import must report
+                <strong>0 imported</strong> and
+                <strong>every row as a duplicate</strong> - proof that no row
+                was written twice.
+            </li>
+            <li>
+                The <strong>Recent import runs</strong> table above and the
+                <code>import_batches</code> table both keep a permanent record
+                of each run.
+            </li>
+        </ul>
+    </section>
+    {% endif %}
+</section>
+{% endblock %}

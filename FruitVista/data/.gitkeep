@@ -1,0 +1,2 @@
+Place the synthetic historical CSV dataset (1 Jan 2022 - 2 Nov 2026) in this
+folder. It is read by the data import phase and is not committed to git.

@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% block title %}Sales Records &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Sales Records</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Sales Records</h1>
+            <p>
+                Every sales record entered from the Sales Entry page. Imported
+                historical data is not listed here and is never changed.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('sales.entry') }}">Add sales record</a>
+        </div>
+    </header>
+
+    <!-- Search and filter ------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Search and filter</h2>
+        <p class="profile-note">
+            Combine any of the fields below. Leave them empty to see every
+            manually entered record.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('sales.records') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">From date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from" value="{{ filters.date_from }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">To date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to" value="{{ filters.date_to }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="filter_district">District</label>
+                    <div class="input-wrap">
+                        <select id="filter_district" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in districts %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="filter_category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="filter_category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="filter_fruit">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="filter_fruit" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in fruits %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-actions">
+                <button class="btn btn-primary" type="submit">Search</button>
+                <a class="btn btn-ghost" href="{{ url_for('sales.records') }}">Reset</a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Results ----------------------------------------------------------- -->
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Records found</span>
+            <span class="summary-value">{{ rows|length }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Quantity sold</span>
+            <span class="summary-value">{{ "{:,.2f}".format(total_quantity) }} kg</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Total revenue</span>
+            <span class="summary-value">&#8377; {{ "{:,.2f}".format(total_revenue) }}</span>
+        </div>
+    </div>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <caption class="visually-hidden">Manually entered sales records</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date of sale</th>
+                    <th scope="col">District</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Fruit</th>
+                    <th scope="col" class="is-numeric">Quantity (kg)</th>
+                    <th scope="col" class="is-numeric">Price (INR/kg)</th>
+                    <th scope="col" class="is-numeric">Total revenue (INR)</th>
+                    <th scope="col" class="is-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row['record_date'] }}</td>
+                    <td>{{ row['district_name'] }}</td>
+                    <td>{{ category_labels.get(row['fruit_category'], row['fruit_category']) }}</td>
+                    <td>{{ row['fruit_name'] }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['quantity_sold']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['selling_price']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['sales_revenue']) }}</td>
+                    <td class="is-actions">
+                        <div class="record-actions">
+                            <a class="btn btn-ghost btn-sm"
+                               href="{{ url_for('sales.edit', record_id=row['id']) }}">Edit</a>
+
+                            <form class="inline-form" method="post"
+                                  action="{{ url_for('sales.delete', record_id=row['id']) }}"
+                                  data-confirm="Delete the sales record for {{ row['fruit_name'] }} in {{ row['district_name'] }} on {{ row['record_date'] }}? This cannot be undone.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% for name, value in filters.items() %}
+                                {% if value %}
+                                <input type="hidden" name="{{ name }}" value="{{ value }}">
+                                {% endif %}
+                                {% endfor %}
+                                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect>
+                <path d="M3.5 9.5h17"></path>
+                <path d="M8 3.5v3"></path>
+                <path d="M16 3.5v3"></path>
+            </svg>
+        </span>
+        <h2>No sales records found</h2>
+        <p>
+            Nothing matches the filters above yet. Change the filters, or add
+            the first sales record for this market.
+        </p>
+        <a class="btn btn-primary" href="{{ url_for('sales.entry') }}">Add sales record</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{# Shared two-column shell for the registration and login pages. #}
+
+{% block content %}
+<section class="auth-section">
+    <div class="container auth-shell">
+        <aside class="auth-aside">
+            <span class="auth-aside-chip">{{ app_name }}</span>
+            <h2>{{ tagline }}</h2>
+            <p class="auth-aside-theme">{{ theme }}</p>
+
+            <ul class="auth-points">
+                <li>
+                    <span class="auth-point-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m5 12.5 4.5 4.5L19 8"></path>
+                        </svg>
+                    </span>
+                    One shared database for historical and manually entered records.
+                </li>
+                <li>
+                    <span class="auth-point-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m5 12.5 4.5 4.5L19 8"></path>
+                        </svg>
+                    </span>
+                    Passwords are stored as secure hashes, never as plain text.
+                </li>
+                <li>
+                    <span class="auth-point-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m5 12.5 4.5 4.5L19 8"></path>
+                        </svg>
+                    </span>
+                    Built for administrators and vendors in five Karnataka districts.
+                </li>
+            </ul>
+        </aside>
+
+        <div class="auth-panel">
+            {% block auth_content %}{% endblock %}
+        </div>
+    </div>
+</section>
+{% endblock %}

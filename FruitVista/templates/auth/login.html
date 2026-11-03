@@ -1,0 +1,104 @@
+{% extends 'auth/layout.html' %}
+
+{% block title %}Sign in &middot; {{ app_name }}{% endblock %}
+
+{% block auth_content %}
+<header class="auth-panel-header">
+    <h1>{% if admin_login %}Administrator sign-in{% else %}Sign in to {{ app_name }}{% endif %}</h1>
+    <p>
+        {% if admin_login %}
+        Restricted area. Only accounts with the administrator role can enter
+        the admin dashboard.
+        {% else %}
+        Enter the email address and password you registered with.
+        {% endif %}
+    </p>
+</header>
+
+{% if errors.form %}
+<div class="form-alert" role="alert">
+    <span aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7.5v5"></path>
+            <path d="M12 16.2h.01"></path>
+        </svg>
+    </span>
+    <p>{{ errors.form }}</p>
+</div>
+{% endif %}
+
+<form class="form" method="post" action="{{ url_for('auth.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next_url or '' }}">
+
+    <!-- Email address -->
+    <div class="form-field{% if errors.email %} has-error{% endif %}">
+        <label for="email">Email address</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                    <path d="m3.5 7 8.5 6 8.5-6"></path>
+                </svg>
+            </span>
+            <input type="email" id="email" name="email" value="{{ form.email }}"
+                   placeholder="name@example.com" maxlength="120" required
+                   autocomplete="email" autofocus
+                   {% if errors.email %}aria-invalid="true" aria-describedby="email-error"{% endif %}>
+        </div>
+        {% if errors.email %}
+        <p class="form-error" id="email-error">{{ errors.email }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Password -->
+    <div class="form-field{% if errors.password %} has-error{% endif %}">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="10" width="16" height="10" rx="2.5"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                </svg>
+            </span>
+            <input type="password" id="password" name="password" placeholder="Your password"
+                   maxlength="128" required autocomplete="current-password"
+                   {% if errors.password %}aria-invalid="true" aria-describedby="password-error"{% endif %}>
+            <button class="input-toggle" type="button" data-toggle-password="password"
+                    aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4l16 16"></path>
+                    <path d="M9.9 5.9A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.4 3.2"></path>
+                    <path d="M6.3 7.9A16.9 16.9 0 0 0 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 3.3-.6"></path>
+                    <path d="M10.3 10.4a2.6 2.6 0 0 0 3.5 3.5"></path>
+                </svg>
+            </button>
+        </div>
+        {% if errors.password %}
+        <p class="form-error" id="password-error">{{ errors.password }}</p>
+        {% endif %}
+    </div>
+
+    <label class="checkbox">
+        <input type="checkbox" name="remember" value="on">
+        <span>Remember me on this device for 7 days</span>
+    </label>
+
+    <button class="btn btn-primary btn-block" type="submit">Login</button>
+</form>
+
+<p class="auth-switch">
+    New to {{ app_name }}?
+    <a href="{{ url_for('auth.register') }}">Create an account</a>
+</p>
+{% endblock %}

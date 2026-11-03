@@ -1,0 +1,41 @@
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div class="footer-brand">
+            <div class="footer-brand-name">
+                <span class="footer-fruit" aria-hidden="true">&#127817;</span>
+                {{ app_name }}
+            </div>
+            <p class="footer-tagline">{{ tagline }}</p>
+            <p class="footer-theme">{{ theme }}</p>
+        </div>
+
+        <div class="footer-column">
+            <h4>Coverage</h4>
+            <ul>
+                {% for district in districts %}
+                <li>{{ district }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="footer-column">
+            <h4>Fruit Categories</h4>
+            <ul>
+                {% for category, fruits in fruit_categories.items() %}
+                <li>{{ category }} <span class="muted">({{ fruits|length }} fruits)</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="container footer-bottom">
+        <p class="footer-note">
+            <strong>Data notice:</strong> FruitVista uses synthetic sample data for
+            demonstration and academic purposes. It is not verified real-world
+            market data.
+        </p>
+        <p class="footer-copy">
+            &copy; {{ current_year }} {{ app_name }} &middot; {{ tagline }}
+        </p>
+    </div>
+</footer>

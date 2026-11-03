@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set insight_sections = ['Sales', 'Seasonal', 'Inventory', 'Wastage', 'Districts'] %}
+
+{% block title %}Market Insights &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Market Insights</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Market Insights</h1>
+            <p>
+                Plain-language observations drawn from the stored data: best and
+                least-selling fruits, revenue leaders, seasonal and daily
+                patterns, stock and reorder positions, wastage hot spots and a
+                five-district comparison. Every figure is calculated in the
+                database by the module that owns it, so an insight always agrees
+                with the matching dashboard and report.
+            </p>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Insight filters</h2>
+        <p class="profile-note">
+            Combine any of the filters below and build the insights again. The
+            record source separates the imported synthetic dataset from the
+            entries recorded here; stock always combines both, because a stock
+            position is only meaningful as a whole.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('insights.index') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">Start date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from"
+                               value="{{ filters.date_from }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">End date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to"
+                               value="{{ filters.date_to }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="record_source">Record source</label>
+                    <div class="input-wrap">
+                        <select id="record_source" name="record_source">
+                            {% for value, label in options['record_sources'] %}
+                            <option value="{{ value }}"
+                                    {% if filters.record_source == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Update insights</button>
+                <a class="btn btn-ghost" href="{{ url_for('insights.index') }}">Reset</a>
+                <span class="filter-status">
+                    Showing {{ insights.period.scope }} &middot; {{ insights.period.label }}
+                    &middot; {{ insights.filters.source_display }}.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    {% if insights.has_data %}
+    <!-- Scope --------------------------------------------------------- -->
+    <section class="profile-card report-header">
+        <div class="report-brand">
+            <span class="report-name">{{ app_name }}</span>
+            <span class="report-tagline">{{ tagline }}</span>
+        </div>
+        <h2 class="report-title">Insights for the selected period</h2>
+        <p class="profile-note">
+            The observations below describe the data that matches the filters
+            above. They are not proof of cause: a change in one measure is
+            reported beside another, never as the reason for it.
+        </p>
+
+        <div class="summary-strip">
+            <div class="summary-item">
+                <span class="summary-label">Period</span>
+                <span class="summary-value">{{ insights.period.label }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">District scope</span>
+                <span class="summary-value">{{ insights.period.scope }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Fruit category</span>
+                <span class="summary-value">{{ insights.filters.category_display or 'All categories' }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Fruit name</span>
+                <span class="summary-value">{{ insights.filters.fruit_name or 'All fruits' }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Record source</span>
+                <span class="summary-value">{{ insights.filters.source_display }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Summary cards -------------------------------------------------- -->
+    <section class="metric-grid" aria-label="Insight summary">
+        {% for item in insights.cards %}
+        <article class="metric-card">
+            <p class="metric-label">{{ item.label }}</p>
+            <p class="metric-value">{{ item.value }}</p>
+            {% if item.hint %}
+            <p class="metric-hint">{{ item.hint }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </section>
+
+    <!-- Insight panels ------------------------------------------------- -->
+    {% for section in insight_sections %}
+    {% set items = insights.insights | selectattr('section', 'equalto', section) | list %}
+    {% if items %}
+    <section class="insight-section">
+        <header class="section-header">
+            <span class="section-eyebrow">Observations</span>
+            <h2>{{ section }} insights</h2>
+        </header>
+
+        <div class="insight-list">
+            {% for item in items %}
+            <article class="insight-card tone-{{ item.tone }}">
+                <header class="insight-head">
+                    <h3>{{ item.title }}</h3>
+                    {% if item.synthetic %}
+                    <span class="synthetic-tag">Synthetic historical data</span>
+                    {% endif %}
+                </header>
+                <p class="insight-observation">{{ item.observation }}</p>
+                <p class="insight-evidence">{{ item.evidence }}</p>
+                {% if item.suggestion %}
+                <p class="insight-suggestion">
+                    <span class="insight-suggestion-label">Suggested action</span>
+                    {{ item.suggestion }}
+                </p>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Charts ---------------------------------------------------------- -->
+    {% if insights.charts %}
+    <section class="insight-section">
+        <header class="section-header">
+            <span class="section-eyebrow">Trends</span>
+            <h2>Charts</h2>
+        </header>
+
+        <div class="chart-grid">
+            {% for chart in insights.charts %}
+            <article class="chart-card">
+                <header class="chart-head">
+                    <h3>{{ chart.title }}</h3>
+                    <p>{{ chart.subtitle }}</p>
+                </header>
+                <div class="chart-canvas">
+                    <canvas id="{{ chart.id }}" aria-label="{{ chart.title }}"></canvas>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Tables ---------------------------------------------------------- -->
+    <section class="insight-section">
+        <header class="section-header">
+            <span class="section-eyebrow">Detail</span>
+            <h2>Supporting figures</h2>
+        </header>
+
+        {% for table in insights.tables %}
+        <section class="profile-card summary-table-card">
+            <h2>{{ table.title }}</h2>
+            {% if table.rows %}
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">{{ table.title }}</caption>
+                    <thead>
+                        <tr>
+                            {% for column in table.columns %}
+                            <th scope="col"{% if not loop.first %} class="is-numeric"{% endif %}>{{ column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table.rows %}
+                        <tr>
+                            {% for cell in row %}
+                            <td{% if not loop.first %} class="is-numeric"{% endif %}>{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="profile-note">No records match the selected filters.</p>
+            {% endif %}
+            {% if table.note %}
+            <p class="profile-note method-note">{{ table.note }}</p>
+            {% endif %}
+        </section>
+        {% endfor %}
+    </section>
+
+    <!-- Method notes ---------------------------------------------------- -->
+    <section class="profile-card">
+        <h2>How these insights are produced</h2>
+        <ul class="schema-list">
+            {% for note in insights.notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18h6"></path>
+                <path d="M10 21h4"></path>
+                <path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"></path>
+            </svg>
+        </span>
+        <h2>No data for these filters</h2>
+        <p>
+            Nothing matches the filters above. Widen the date range or clear a
+            filter to generate insights.
+        </p>
+        <a class="btn btn-ghost" href="{{ url_for('insights.index') }}">Reset filters</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="insights-chart-data" type="application/json">{{ insights.charts | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

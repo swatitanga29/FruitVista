@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ code }} &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="error-section container">
+    <div class="error-card">
+        <span class="error-code">{{ code }}</span>
+        <h1>{{ message }}</h1>
+        <p>
+            {% if hint %}
+            {{ hint }}
+            {% else %}
+            The requested page is not available. You can return to the
+            FruitVista homepage and continue from there.
+            {% endif %}
+        </p>
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Back to homepage</a>
+    </div>
+</section>
+{% endblock %}

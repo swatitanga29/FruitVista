@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% block title %}Record Purchase &middot; Inventory &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('inventory.index') }}">Inventory Management</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Record purchase</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Record purchase</h1>
+            <p>
+                Add stock that was bought for a district. The purchased quantity
+                is added to the fruit's available stock and the purchase value is
+                calculated as quantity x purchase price per kilogram.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-ghost" href="{{ url_for('inventory.movements') }}">Stock movement history</a>
+        </div>
+    </header>
+
+    {% if errors.form %}
+    <div class="form-alert" role="alert">
+        <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7.5v5"></path>
+                <path d="M12 16.2h.01"></path>
+            </svg>
+        </span>
+        <p>{{ errors.form }}</p>
+    </div>
+    {% endif %}
+
+    <section class="profile-card sales-card">
+        <form class="form" method="post" action="{{ url_for('inventory.purchase') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <!-- 1. Purchase date ------------------------------------- -->
+                <div class="form-field{% if errors.movement_date %} has-error{% endif %}">
+                    <label for="movement_date">Purchase date</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect>
+                                <path d="M3.5 9.5h17"></path>
+                                <path d="M8 3.5v3"></path>
+                                <path d="M16 3.5v3"></path>
+                            </svg>
+                        </span>
+                        <input type="date" id="movement_date" name="movement_date"
+                               value="{{ form.movement_date }}" max="{{ today }}" required
+                               {% if errors.movement_date %}aria-invalid="true" aria-describedby="movement_date-error"{% endif %}>
+                    </div>
+                    {% if errors.movement_date %}
+                    <p class="form-error" id="movement_date-error">{{ errors.movement_date }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 2. District ------------------------------------------ -->
+                <div class="form-field{% if errors.district_id %} has-error{% endif %}">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 21.5s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"></path>
+                                <circle cx="12" cy="10.2" r="2.6"></circle>
+                            </svg>
+                        </span>
+                        <select id="district_id" name="district_id" required
+                                {% if errors.district_id %}aria-invalid="true" aria-describedby="district_id-error"{% endif %}>
+                            <option value="">Select a district</option>
+                            {% for district in districts %}
+                            <option value="{{ district['id'] }}"
+                                    {% if form.district_id == district['id']|string %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.district_id %}
+                    <p class="form-error" id="district_id-error">{{ errors.district_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 3. Fruit category ------------------------------------ -->
+                <div class="form-field{% if errors.category %} has-error{% endif %}">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 6.5h16"></path>
+                                <path d="M4 12h16"></path>
+                                <path d="M4 17.5h10"></path>
+                            </svg>
+                        </span>
+                        <select id="category" name="category" required
+                                {% if errors.category %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                            <option value="">Select a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}"
+                                    {% if form.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.category %}
+                    <p class="form-error" id="category-error">{{ errors.category }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 4. Fruit name ---------------------------------------- -->
+                <div class="form-field{% if errors.fruit_id %} has-error{% endif %}">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 8.2c0-2.3 1.7-4.2 4-4.2.3 2.5-1.5 4.4-4 4.4Z"></path>
+                                <path d="M12 21.2c-4.1 0-7.1-2.7-7.1-6.7 0-3.6 3-6.3 7.1-6.3s7.1 2.7 7.1 6.3c0 4-3 6.7-7.1 6.7Z"></path>
+                            </svg>
+                        </span>
+                        <select id="fruit_id" name="fruit_id" required
+                                {% if errors.fruit_id %}aria-invalid="true" aria-describedby="fruit_id-error"{% endif %}>
+                            <option value="">Select a fruit</option>
+                            {% for fruit in fruits %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if form.fruit_id == fruit['id']|string %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="form-hint">The list follows the fruit category chosen above.</p>
+                    {% if errors.fruit_id %}
+                    <p class="form-error" id="fruit_id-error">{{ errors.fruit_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 5. Quantity purchased -------------------------------- -->
+                <div class="form-field{% if errors.quantity %} has-error{% endif %}">
+                    <label for="quantity">Quantity purchased (kg)</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4.5 8.5h15l-1.4 10.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8Z"></path>
+                                <path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"></path>
+                            </svg>
+                        </span>
+                        <input type="number" id="quantity" name="quantity"
+                               value="{{ form.quantity }}" min="0.001" step="0.001"
+                               inputmode="decimal" placeholder="0.000" required
+                               {% if errors.quantity %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}>
+                    </div>
+                    {% if errors.quantity %}
+                    <p class="form-error" id="quantity-error">{{ errors.quantity }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 6. Purchase price ------------------------------------ -->
+                <div class="form-field{% if errors.unit_price %} has-error{% endif %}">
+                    <label for="unit_price">Purchase price (INR per kg)</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 5h10"></path>
+                                <path d="M7 9.5h10"></path>
+                                <path d="M15.5 5 9 19"></path>
+                            </svg>
+                        </span>
+                        <input type="number" id="unit_price" name="unit_price"
+                               value="{{ form.unit_price }}" min="0.01" step="0.01"
+                               inputmode="decimal" placeholder="0.00" required
+                               {% if errors.unit_price %}aria-invalid="true" aria-describedby="unit_price-error"{% endif %}>
+                    </div>
+                    {% if errors.unit_price %}
+                    <p class="form-error" id="unit_price-error">{{ errors.unit_price }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 7. Purchase value ---------------------------------------- -->
+            <div class="form-field revenue-field">
+                <label for="purchase_value">Purchase value (INR)</label>
+                <div class="input-wrap">
+                    <span class="input-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="8.5"></circle>
+                            <path d="M9 8.5h6"></path>
+                            <path d="M9 12h6"></path>
+                            <path d="M12 8.5V16"></path>
+                        </svg>
+                    </span>
+                    <input type="text" id="purchase_value" data-purchase-output readonly
+                           value="" placeholder="0.00" tabindex="-1" aria-live="polite">
+                </div>
+                <p class="form-hint">
+                    Calculated automatically as quantity purchased x purchase price
+                    per kilogram and saved with the purchase.
+                </p>
+            </div>
+
+            <!-- 8. Note --------------------------------------------------- -->
+            <div class="form-field{% if errors.reason %} has-error{% endif %}">
+                <label for="reason">Note (optional)</label>
+                <div class="input-wrap">
+                    <input type="text" id="reason" name="reason" value="{{ form.reason }}"
+                           maxlength="200" placeholder="For example: weekly market purchase"
+                           {% if errors.reason %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>
+                </div>
+                <p class="form-hint">A short remark is helpful but not required for a purchase.</p>
+                {% if errors.reason %}
+                <p class="form-error" id="reason-error">{{ errors.reason }}</p>
+                {% endif %}
+            </div>
+
+            <div class="dashboard-actions">
+                <button class="btn btn-primary" type="submit">Save purchase</button>
+                <a class="btn btn-ghost" href="{{ url_for('inventory.index') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</section>
+{% endblock %}

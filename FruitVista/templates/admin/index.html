@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator</span>
+            <h1>Welcome, {{ user['full_name'] }}</h1>
+            <p>
+                You are signed in as an administrator of {{ app_name }}
+                &middot; {{ tagline }}
+            </p>
+        </div>
+
+        <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost" type="submit">Logout</button>
+        </form>
+    </header>
+
+    <dl class="account-grid account-grid-compact">
+        <div class="account-card">
+            <dt>Account type</dt>
+            <dd><span class="role-badge role-admin">Administrator</span></dd>
+        </div>
+        <div class="account-card">
+            <dt>Email address</dt>
+            <dd>{{ user['email'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>District</dt>
+            <dd>{{ user['district'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>Previous sign-in</dt>
+            <dd>{{ previous_login or 'First sign-in' }}</dd>
+        </div>
+    </dl>
+
+    <section class="dashboard-next">
+        <header class="section-header">
+            <span class="section-eyebrow">Management modules</span>
+            <h2>Administrator tools</h2>
+            <p>
+
+                Sales Entry, Data Import, Sales Analytics, Inventory Management,
+                Wastage Management, Reports, Market Insights and Machine Learning
+                are ready to use. Every figure is calculated in the database by
+                the module that owns it.
+            </p>
+        </header>
+
+        <div class="card-grid">
+            <article class="card module-card">
+                <span class="card-icon icon-green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 5.5h2.2l2 10.5h9.6l2-7.5H6.5"></path>
+                        <circle cx="9.5" cy="19" r="1.4"></circle>
+                        <circle cx="17" cy="19" r="1.4"></circle>
+                    </svg>
+                </span>
+                <h3>Sales Entry</h3>
+                <p>Record daily fruit sales with automatic revenue, then search, edit or delete them.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('sales.entry') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 6.5c0-1.4 3.6-2.5 8-2.5s8 1.1 8 2.5S16.4 9 12 9 4 7.9 4 6.5Z"></path>
+                        <path d="M4 6.5v11c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-11"></path>
+                        <path d="M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"></path>
+                    </svg>
+                </span>
+                <h3>Historical Data Import</h3>
+                <p>Load the synthetic historical CSV dataset into the database, with duplicate protection and progress.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('data_import.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 20V10"></path>
+                        <path d="M10 20V4"></path>
+                        <path d="M16 20v-7"></path>
+                        <path d="M22 20H2"></path>
+                    </svg>
+                </span>
+                <h3>Sales Analytics</h3>
+                <p>Revenue, profit, wastage and sales charts by day, month, year, fruit and district.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('analytics.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                        <path d="M3 7v10l9 4 9-4V7"></path>
+                        <path d="M12 11v10"></path>
+                    </svg>
+                </span>
+                <h3>Inventory Management</h3>
+                <p>Stock levels, purchases, stock adjustments and reorder alerts for every fruit.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('inventory.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-amber" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v6"></path>
+                        <path d="M6.5 6.5 12 9l5.5-2.5"></path>
+                        <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7"></path>
+                    </svg>
+                </span>
+                <h3>Wastage Management</h3>
+                <p>Damaged quantities, wastage cost and wastage trends by fruit and district.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('wastage.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-purple" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                        <path d="M14 3v5h5"></path>
+                        <path d="M9 14h6"></path>
+                        <path d="M9 18h4"></path>
+                    </svg>
+                </span>
+                <h3>Reports</h3>
+                <p>Sales, inventory and wastage reports with filters and PDF, CSV and Excel downloads.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('reports.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18h6"></path>
+                        <path d="M10 21h4"></path>
+                        <path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"></path>
+                    </svg>
+                </span>
+                <h3>Insights</h3>
+                <p>Best-selling fruits, demand patterns, seasonal trends and market observations.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('insights.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-purple" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="6" r="2.2"></circle>
+                        <circle cx="6" cy="18" r="2.2"></circle>
+                        <circle cx="18" cy="12" r="2.2"></circle>
+                        <path d="M8 7.2 15.9 11"></path>
+                        <path d="M8 16.8 15.9 13"></path>
+                    </svg>
+                </span>
+                <h3>Machine Learning</h3>
+                <p>Price, sales and demand forecasts from trained models, with evaluation results and history.</p>
+                <span class="module-state module-state-live">Available</span>
+                <a class="module-link" href="{{ url_for('ml.index') }}">Open module</a>
+            </article>
+
+            <article class="card module-card">
+                <span class="card-icon icon-blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"></circle>
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    </svg>
+                </span>
+                <h3>Admin Profile</h3>
+                <p>Review your administrator details and change your password securely.</p>
+                <a class="module-link" href="{{ url_for('account.profile') }}">Open profile</a>
+            </article>
+        </div>
+    </section>
+</section>
+{% endblock %}

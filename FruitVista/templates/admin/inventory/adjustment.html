@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% block title %}Stock Adjustment &middot; Inventory &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('inventory.index') }}">Inventory Management</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Stock adjustment</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Stock adjustment</h1>
+            <p>
+                Correct the stock of a fruit in a district. Use a positive
+                quantity to add stock and a negative quantity to remove it. Every
+                adjustment needs a reason, so the change stays explainable.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-ghost" href="{{ url_for('inventory.movements') }}">Stock movement history</a>
+        </div>
+    </header>
+
+    {% if errors.form %}
+    <div class="form-alert" role="alert">
+        <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7.5v5"></path>
+                <path d="M12 16.2h.01"></path>
+            </svg>
+        </span>
+        <p>{{ errors.form }}</p>
+    </div>
+    {% endif %}
+
+    <section class="profile-card sales-card">
+        <form class="form" method="post" action="{{ url_for('inventory.adjustment') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <!-- 1. Adjustment date ----------------------------------- -->
+                <div class="form-field{% if errors.movement_date %} has-error{% endif %}">
+                    <label for="movement_date">Adjustment date</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect>
+                                <path d="M3.5 9.5h17"></path>
+                                <path d="M8 3.5v3"></path>
+                                <path d="M16 3.5v3"></path>
+                            </svg>
+                        </span>
+                        <input type="date" id="movement_date" name="movement_date"
+                               value="{{ form.movement_date }}" max="{{ today }}" required
+                               {% if errors.movement_date %}aria-invalid="true" aria-describedby="movement_date-error"{% endif %}>
+                    </div>
+                    {% if errors.movement_date %}
+                    <p class="form-error" id="movement_date-error">{{ errors.movement_date }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 2. District ------------------------------------------ -->
+                <div class="form-field{% if errors.district_id %} has-error{% endif %}">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 21.5s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"></path>
+                                <circle cx="12" cy="10.2" r="2.6"></circle>
+                            </svg>
+                        </span>
+                        <select id="district_id" name="district_id" required
+                                {% if errors.district_id %}aria-invalid="true" aria-describedby="district_id-error"{% endif %}>
+                            <option value="">Select a district</option>
+                            {% for district in districts %}
+                            <option value="{{ district['id'] }}"
+                                    {% if form.district_id == district['id']|string %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.district_id %}
+                    <p class="form-error" id="district_id-error">{{ errors.district_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 3. Fruit category ------------------------------------ -->
+                <div class="form-field{% if errors.category %} has-error{% endif %}">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 6.5h16"></path>
+                                <path d="M4 12h16"></path>
+                                <path d="M4 17.5h10"></path>
+                            </svg>
+                        </span>
+                        <select id="category" name="category" required
+                                {% if errors.category %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                            <option value="">Select a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}"
+                                    {% if form.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.category %}
+                    <p class="form-error" id="category-error">{{ errors.category }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 4. Fruit name ---------------------------------------- -->
+                <div class="form-field{% if errors.fruit_id %} has-error{% endif %}">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 8.2c0-2.3 1.7-4.2 4-4.2.3 2.5-1.5 4.4-4 4.4Z"></path>
+                                <path d="M12 21.2c-4.1 0-7.1-2.7-7.1-6.7 0-3.6 3-6.3 7.1-6.3s7.1 2.7 7.1 6.3c0 4-3 6.7-7.1 6.7Z"></path>
+                            </svg>
+                        </span>
+                        <select id="fruit_id" name="fruit_id" required
+                                {% if errors.fruit_id %}aria-invalid="true" aria-describedby="fruit_id-error"{% endif %}>
+                            <option value="">Select a fruit</option>
+                            {% for fruit in fruits %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if form.fruit_id == fruit['id']|string %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="form-hint">The list follows the fruit category chosen above.</p>
+                    {% if errors.fruit_id %}
+                    <p class="form-error" id="fruit_id-error">{{ errors.fruit_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 5. Adjustment quantity ------------------------------- -->
+                <div class="form-field{% if errors.quantity %} has-error{% endif %}">
+                    <label for="quantity">Adjustment quantity (kg)</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4.5 8.5h15l-1.4 10.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8Z"></path>
+                                <path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"></path>
+                            </svg>
+                        </span>
+                        <input type="number" id="quantity" name="quantity"
+                               value="{{ form.quantity }}" step="0.001"
+                               inputmode="decimal" placeholder="0.000" required
+                               {% if errors.quantity %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}>
+                    </div>
+                    <p class="form-hint">
+                        Positive adds stock, negative removes it. Zero is not allowed.
+                    </p>
+                    {% if errors.quantity %}
+                    <p class="form-error" id="quantity-error">{{ errors.quantity }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 6. Reason ------------------------------------------- -->
+                <div class="form-field{% if errors.reason %} has-error{% endif %}">
+                    <label for="reason">Reason for the adjustment</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 4.5h9.5L19 9v10.5H5Z"></path>
+                                <path d="M14 4.5V9h4.5"></path>
+                                <path d="M8.5 13h7"></path>
+                                <path d="M8.5 16.5h4.5"></path>
+                            </svg>
+                        </span>
+                        <input type="text" id="reason" name="reason" value="{{ form.reason }}"
+                           maxlength="200" placeholder="Why is the stock being changed?" required
+                           {% if errors.reason %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>
+                    </div>
+                    <span class="reason-examples">
+                        Examples: damaged in storage, stock count correction,
+                        returned to the supplier, transferred to another district.
+                    </span>
+                    {% if errors.reason %}
+                    <p class="form-error" id="reason-error">{{ errors.reason }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="dashboard-actions">
+                <button class="btn btn-primary" type="submit">Save stock adjustment</button>
+                <a class="btn btn-ghost" href="{{ url_for('inventory.index') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</section>
+{% endblock %}

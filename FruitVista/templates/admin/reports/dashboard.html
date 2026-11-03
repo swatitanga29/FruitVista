@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% block title %}Reports &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Reports</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Reports and Export Management</h1>
+            <p>
+                Build a Sales, Inventory, Wastage or Market Summary report from
+                the stored data, read it on this page, and download it as a PDF,
+                a CSV file or an Excel workbook. Every figure is calculated in
+                the database by the module that owns it, so a report always
+                matches its dashboard.
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="btn btn-primary"
+               href="{{ url_for('reports.download', report_type=report.report_type, file_format='pdf', **download_query) }}">
+                Download PDF
+            </a>
+            <a class="btn btn-ghost"
+               href="{{ url_for('reports.download', report_type=report.report_type, file_format='csv', **download_query) }}">
+                Download CSV
+            </a>
+            <a class="btn btn-ghost"
+               href="{{ url_for('reports.download', report_type=report.report_type, file_format='xlsx', **download_query) }}">
+                Download Excel
+            </a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Report filters</h2>
+        <p class="profile-note">
+            Choose the report type and combine any of the filters below. The
+            record source separates the imported synthetic dataset from the
+            entries recorded here.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('reports.index') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="report_type">Report type</label>
+                    <div class="input-wrap">
+                        <select id="report_type" name="report_type">
+                            {% for item in options['report_types'] %}
+                            <option value="{{ item['key'] }}"
+                                    {% if filters.report_type == item['key'] %}selected{% endif %}>
+                                {{ item['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_from">Start date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from"
+                               value="{{ filters.date_from }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">End date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to"
+                               value="{{ filters.date_to }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="record_source">Record source</label>
+                    <div class="input-wrap">
+                        <select id="record_source" name="record_source">
+                            {% for value, label in options['record_sources'] %}
+                            <option value="{{ value }}"
+                                    {% if filters.record_source == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Build report</button>
+                <a class="btn btn-ghost" href="{{ url_for('reports.index') }}">Reset</a>
+                <span class="filter-status">
+                    {{ report.title }} generated on {{ report.generated_at }}.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Report identity --------------------------------------------------- -->
+    <section class="profile-card report-header">
+        <div class="report-brand">
+            <span class="report-name">{{ app_name }}</span>
+            <span class="report-tagline">{{ tagline }}</span>
+        </div>
+        <h2 class="report-title">{{ report.title }}</h2>
+        <p class="profile-note">{{ report.description }}</p>
+        <p class="filter-status">Generated on {{ report.generated_at }}</p>
+
+        <div class="summary-strip">
+            {% for item in report.filter_rows %}
+            <div class="summary-item">
+                <span class="summary-label">{{ item.label }}</span>
+                <span class="summary-value">{{ item.value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if report.has_data %}
+    <!-- Summary statistics ----------------------------------------------- -->
+    <section class="metric-grid" aria-label="Report summary">
+        {% for item in report.summary %}
+        <article class="metric-card">
+            <p class="metric-label">{{ item.label }}</p>
+            <p class="metric-value">{{ item.value }}</p>
+        </article>
+        {% endfor %}
+    </section>
+
+    <!-- Charts ------------------------------------------------------------ -->
+    {% if report.charts %}
+    <div class="chart-grid">
+        {% for chart in report.charts %}
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>{{ chart.title }}</h3>
+                <p>{{ chart.subtitle }}</p>
+            </header>
+            <div class="chart-canvas">
+                <canvas id="{{ chart.id }}" aria-label="{{ chart.title }}"></canvas>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Tables ------------------------------------------------------------ -->
+    {% for table in report.tables %}
+    <section class="profile-card summary-table-card">
+        <h2>{{ table.title }}</h2>
+        {% if table.rows %}
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">{{ table.title }}</caption>
+                <thead>
+                    <tr>
+                        {% for column in table.columns %}
+                        <th scope="col"{% if not loop.first %} class="is-numeric"{% endif %}>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table.rows %}
+                    <tr>
+                        {% for cell in row %}
+                        <td{% if not loop.first %} class="is-numeric"{% endif %}>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="profile-note">No records match the selected filters.</p>
+        {% endif %}
+        {% if table.note %}
+        <p class="profile-note method-note">{{ table.note }}</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                <path d="M14 3v5h5"></path>
+                <path d="M9 14h6"></path>
+                <path d="M9 18h4"></path>
+            </svg>
+        </span>
+        <h2>No data for this report</h2>
+        <p>
+            Nothing matches the filters above. Widen the date range or clear a
+            filter to build the report.
+        </p>
+        <a class="btn btn-ghost" href="{{ url_for('reports.index') }}">Reset filters</a>
+    </div>
+    {% endif %}
+
+    <!-- Method notes ------------------------------------------------------ -->
+    <section class="profile-card">
+        <h2>How this report is calculated</h2>
+        <ul class="schema-list">
+            {% for note in report.notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="report-chart-data" type="application/json">{{ report.charts | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

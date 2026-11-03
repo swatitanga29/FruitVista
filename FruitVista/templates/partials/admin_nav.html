@@ -1,0 +1,170 @@
+{% if current_user and current_user['role'] == 'admin' %}
+<!-- Administrator navigation - administrators only. The FruitVista brand and
+     the sign-out action live in the top navbar and the profile dropdown
+     respectively. Hiding this bar from everybody else is convenience only:
+     access to every page is still decided on the server by the
+     admin_required decorator. -->
+<section class="admin-bar" aria-label="Administrator">
+    <nav class="admin-bar-inner container" aria-label="Administrator modules">
+        <button class="admin-nav-toggle" type="button" aria-expanded="false"
+                aria-controls="admin-navigation" aria-label="Toggle administrator navigation">
+            <span></span><span></span><span></span>
+        </button>
+
+        <ul class="admin-bar-links" id="admin-navigation">
+            <li>
+                <a class="admin-bar-link{% if page == 'admin' and not active_module %} is-active{% endif %}"
+                   {% if page == 'admin' and not active_module %}aria-current="page"{% endif %}
+                   href="{{ url_for('admin.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.8"></rect>
+                        <rect x="13.2" y="3.2" width="7.6" height="7.6" rx="1.8"></rect>
+                        <rect x="3.2" y="13.2" width="7.6" height="7.6" rx="1.8"></rect>
+                        <rect x="13.2" y="13.2" width="7.6" height="7.6" rx="1.8"></rect>
+                    </svg>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'sales-analytics' %} is-active{% endif %}"
+                   {% if active_module == 'sales-analytics' %}aria-current="page"{% endif %}
+                   href="{{ url_for('analytics.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 4v16h16"></path>
+                        <path d="M8.5 16.5v-4"></path>
+                        <path d="M13 16.5v-8"></path>
+                        <path d="M17.5 16.5v-5.5"></path>
+                    </svg>
+                    Sales Analytics
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'inventory' %} is-active{% endif %}"
+                   {% if active_module == 'inventory' %}aria-current="page"{% endif %}
+                   href="{{ url_for('inventory.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                        <path d="M3 7v10l9 4 9-4V7"></path>
+                        <path d="M12 11v10"></path>
+                    </svg>
+                    Inventory
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'wastage' %} is-active{% endif %}"
+                   {% if active_module == 'wastage' %}aria-current="page"{% endif %}
+                   href="{{ url_for('wastage.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 7h16"></path>
+                        <path d="M9.5 4.5h5"></path>
+                        <path d="M6.5 7l1 12.5h9L17.5 7"></path>
+                        <path d="M10.5 11v5.5"></path>
+                        <path d="M13.5 11v5.5"></path>
+                    </svg>
+                    Wastage
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'reports' %} is-active{% endif %}"
+                   {% if active_module == 'reports' %}aria-current="page"{% endif %}
+                   href="{{ url_for('reports.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                        <path d="M14 3v5h5"></path>
+                        <path d="M9 13.5h6"></path>
+                        <path d="M9 17h4"></path>
+                    </svg>
+                    Reports
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'insights' %} is-active{% endif %}"
+                   {% if active_module == 'insights' %}aria-current="page"{% endif %}
+                   href="{{ url_for('insights.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 18h6"></path>
+                        <path d="M10 21h4"></path>
+                        <path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"></path>
+                    </svg>
+                    Market Insights
+                </a>
+            </li>
+            <li>
+                <a class="admin-bar-link{% if active_module == 'ml' %} is-active{% endif %}"
+                   {% if active_module == 'ml' %}aria-current="page"{% endif %}
+                   href="{{ url_for('ml.index') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 17.5 9 11l4 3.5L21 6"></path>
+                        <path d="M15.5 6H21v5.5"></path>
+                    </svg>
+                    ML Predictions
+                </a>
+            </li>
+            <li class="admin-bar-profile">
+                <div class="admin-dropdown" data-admin-dropdown>
+                    <button class="admin-bar-link admin-dropdown-toggle{% if page == 'profile' %} is-active{% endif %}"
+                            type="button" aria-expanded="false" aria-haspopup="true"
+                            aria-controls="admin-profile-menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="8" r="4"></circle>
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        </svg>
+                        Admin Profile
+                        <svg class="admin-dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6"></path>
+                        </svg>
+                    </button>
+
+                    <ul class="admin-dropdown-menu" id="admin-profile-menu">
+                        <li>
+                            <a class="admin-dropdown-item" href="{{ url_for('account.profile') }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="12" cy="8" r="4"></circle>
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                </svg>
+                                My Profile
+                            </a>
+                        </li>
+                        <li>
+                            <a class="admin-dropdown-item" href="{{ url_for('account.profile') }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <rect x="4" y="10.5" width="16" height="10" rx="2.2"></rect>
+                                    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"></path>
+                                </svg>
+                                Change Password
+                            </a>
+                        </li>
+                        <li class="admin-dropdown-separator">
+                            <!-- Sign-out stays a POST form so it keeps the CSRF token
+                                 and the existing auth.logout route. -->
+                            <form method="post" action="{{ url_for('auth.logout') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="admin-dropdown-item" type="submit">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path>
+                                        <path d="M10 16l-4-4 4-4"></path>
+                                        <path d="M6 12h10"></path>
+                                    </svg>
+                                    Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </nav>
+</section>
+{% endif %}

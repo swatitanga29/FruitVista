@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ module['name'] }} &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">{{ module['name'] }}</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>{{ module['name'] }}</h1>
+            <p>{{ module['summary'] }}</p>
+        </div>
+        <span class="module-state">Planned</span>
+    </header>
+
+    <section class="dashboard-next">
+        <header class="section-header">
+            <span class="section-eyebrow">Coming in a later phase</span>
+            <h2>What this module will contain</h2>
+            <p>
+                Only the navigation structure exists at this stage. The
+                {{ module['name'] }} module is not implemented yet, so no
+                market, sales or stock data is shown here.
+            </p>
+        </header>
+
+        <ul class="module-points">
+            {% for point in module['highlights'] %}
+            <li>
+                <span class="module-point-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m5 12.5 4.5 4.5L19 8"></path>
+                    </svg>
+                </span>
+                {{ point }}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <div class="dashboard-actions">
+        <a class="btn btn-primary" href="{{ url_for('admin.index') }}">Back to Admin Dashboard</a>
+    </div>
+</section>
+{% endblock %}

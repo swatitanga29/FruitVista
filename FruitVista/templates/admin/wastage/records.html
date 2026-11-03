@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% block title %}Wastage Records &middot; Wastage Management &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('wastage.index') }}">Wastage Management</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Wastage records</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Wastage records</h1>
+            <p>
+                Every wastage record in the database: the damaged quantity the
+                imported dataset holds and the wastage recorded from this
+                module. Each row shows where it came from, so the two sets are
+                never confused.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('wastage.entry') }}">Record wastage</a>
+            <a class="btn btn-ghost" href="{{ url_for('wastage.index') }}">Wastage dashboard</a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Search and filter</h2>
+        <p class="profile-note">
+            Combine any of the fields below. Leave the dates empty to see the
+            full stored range, newest first.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('wastage.records') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">From date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from" value="{{ filters.date_from }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">To date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to" value="{{ filters.date_to }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="record_source">Record source</label>
+                    <div class="input-wrap">
+                        <select id="record_source" name="record_source">
+                            <option value="">All sources</option>
+                            <option value="historical"{% if filters.record_source == 'historical' %} selected{% endif %}>
+                                Historical dataset only
+                            </option>
+                            <option value="manual"{% if filters.record_source == 'manual' %} selected{% endif %}>
+                                Manual entries only
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Apply filters</button>
+                <a class="btn btn-ghost" href="{{ url_for('wastage.records') }}">Reset</a>
+                <span class="filter-status">
+                    Showing {{ "{:,}".format(pager.total) }} wastage
+                    record{{ '' if pager.total == 1 else 's' }}.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Totals ------------------------------------------------------------ -->
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Records found</span>
+            <span class="summary-value">{{ "{:,}".format(pager.total) }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Damaged quantity</span>
+            <span class="summary-value">{{ "{:,.2f}".format(summary.damaged_quantity) }} kg</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Wastage cost</span>
+            <span class="summary-value">&#8377; {{ "{:,.2f}".format(summary.wastage_cost) }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Wastage percentage</span>
+            <span class="summary-value">
+                {% if summary.wastage_percentage is not none %}
+                {{ "{:.3f}".format(summary.wastage_percentage) }} %
+                {% else %}
+                Not available
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table wastage-table">
+            <caption class="visually-hidden">Wastage records for the selected filters</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">District</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Fruit</th>
+                    <th scope="col" class="is-numeric">Damaged (kg)</th>
+                    <th scope="col" class="is-numeric">Cost per kg (&#8377;)</th>
+                    <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Record source</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row['wastage_date'] }}</td>
+                    <td>{{ row['district_name'] }}</td>
+                    <td>{{ category_labels.get(row['fruit_category'], row['fruit_category']) }}</td>
+                    <td>{{ row['fruit_name'] }}</td>
+                    <td class="is-numeric">{{ "{:,.3f}".format(row['damaged_quantity']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['cost_per_kg']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                    <td class="reason-cell">
+                        {% if row['reason'] %}{{ row['reason'] }}{% else %}&ndash;{% endif %}
+                    </td>
+                    <td><span class="source-tag">{{ row['source_label'] }}</span></td>
+                    <td>
+                        {% if row['record_id'] %}
+                        <a class="btn btn-ghost btn-sm"
+                           href="{{ url_for('wastage.edit', record_id=row['record_id']) }}">Edit</a>
+                        {% else %}
+                        &ndash;
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pager.pages > 1 %}
+    <nav class="pager" aria-label="Wastage record pages">
+        <span class="pager-info">
+            Showing rows {{ "{:,}".format(pager.first_row) }}&ndash;{{ "{:,}".format(pager.last_row) }}
+            of {{ "{:,}".format(pager.total) }}
+        </span>
+        <div class="pager-controls">
+            {% if pager.has_prev %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('wastage.records', **pager.prev_query) }}">Previous</a>
+            {% endif %}
+            <span class="pager-page">Page {{ pager.page }} of {{ pager.pages }}</span>
+            {% if pager.has_next %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('wastage.records', **pager.next_query) }}">Next</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v6"></path>
+                <path d="M6.5 6.5 12 9l5.5-2.5"></path>
+                <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7"></path>
+            </svg>
+        </span>
+        <h2>No wastage records found</h2>
+        <p>
+            Nothing matches the filters above. Widen the date range or clear a
+            filter to see the wastage records.
+        </p>
+        <a class="btn btn-ghost" href="{{ url_for('wastage.records') }}">Reset filters</a>
+    </div>
+    {% endif %}
+
+    <section class="profile-card">
+        <h2>What these records mean</h2>
+        <ul class="schema-list">
+            <li>
+                A <strong>Historical</strong> row comes from the imported
+                synthetic dataset. Its damaged quantity and wastage cost are the
+                stored values, and the cost per kilogram is worked out as
+                wastage cost &divide; damaged quantity.
+            </li>
+            <li>
+                A <strong>Manual</strong> row was recorded in this module. It can
+                be edited here; a historical row is never changed.
+            </li>
+            <li>
+                Historical and manual wastage are added together once, so the
+                same loss is never counted twice.
+            </li>
+        </ul>
+        <p class="profile-note">{{ notice }}</p>
+    </section>
+</section>
+{% endblock %}

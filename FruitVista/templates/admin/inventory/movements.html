@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set movement_labels = {
+    'purchase': 'Purchase',
+    'adjustment': 'Stock adjustment'
+} %}
+
+{% set movement_classes = {
+    'purchase': 'movement-purchase',
+    'adjustment': 'movement-adjustment'
+} %}
+
+{% block title %}Stock Movement History &middot; Inventory &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('inventory.index') }}">Inventory Management</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Stock movement history</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Stock movement history</h1>
+            <p>
+                Every purchase and stock adjustment recorded from the Inventory
+                Management module. These entries are stored separately from the
+                imported dataset and from the manual sales, so nothing here
+                changes or replaces an existing record.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('inventory.purchase') }}">Record purchase</a>
+            <a class="btn btn-ghost" href="{{ url_for('inventory.adjustment') }}">Stock adjustment</a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Search and filter</h2>
+        <p class="profile-note">
+            Combine any of the fields below. Leave the dates empty to see every
+            movement, newest first.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('inventory.movements') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">From date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from" value="{{ filters.date_from }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">To date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to" value="{{ filters.date_to }}">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="movement_type">Movement type</label>
+                    <div class="input-wrap">
+                        <select id="movement_type" name="movement_type">
+                            <option value="">All movements</option>
+                            <option value="purchase"{% if filters.movement_type == 'purchase' %} selected{% endif %}>Purchases</option>
+                            <option value="adjustment"{% if filters.movement_type == 'adjustment' %} selected{% endif %}>Stock adjustments</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Apply filters</button>
+                <a class="btn btn-ghost" href="{{ url_for('inventory.movements') }}">Reset</a>
+                <span class="filter-status">
+                    Showing {{ "{:,}".format(pager.total) }} movement{{ '' if pager.total == 1 else 's' }}.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Totals ------------------------------------------------------------ -->
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Movements found</span>
+            <span class="summary-value">{{ "{:,}".format(pager.total) }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Purchased quantity</span>
+            <span class="summary-value">
+                {{ "{:,.2f}".format(totals.get('purchase', {}).get('quantity', 0)) }} kg
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Purchase value</span>
+            <span class="summary-value">
+                &#8377; {{ "{:,.2f}".format(totals.get('purchase', {}).get('amount', 0)) }}
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Net stock adjustments</span>
+            <span class="summary-value">
+                {{ "{:+,.2f}".format(totals.get('adjustment', {}).get('quantity', 0)) }} kg
+            </span>
+        </div>
+    </div>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <caption class="visually-hidden">Stock movements entered by an administrator</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">District</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Fruit</th>
+                    <th scope="col">Type</th>
+                    <th scope="col" class="is-numeric">Quantity (kg)</th>
+                    <th scope="col" class="is-numeric">Price (INR/kg)</th>
+                    <th scope="col" class="is-numeric">Value (INR)</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Recorded at</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row['movement_date'] }}</td>
+                    <td>{{ row['district_name'] }}</td>
+                    <td>{{ category_labels.get(row['fruit_category'], row['fruit_category']) }}</td>
+                    <td>{{ row['fruit_name'] }}</td>
+                    <td>
+                        <span class="movement-chip {{ movement_classes.get(row['movement_type'], '') }}">
+                            {{ movement_labels.get(row['movement_type'], row['movement_type']) }}
+                        </span>
+                    </td>
+                    <td class="is-numeric">{{ "{:+,.2f}".format(row['quantity']) }}</td>
+                    <td class="is-numeric">
+                        {% if row['movement_type'] == 'purchase' %}
+                        {{ "{:,.2f}".format(row['unit_price']) }}
+                        {% else %}
+                        &ndash;
+                        {% endif %}
+                    </td>
+                    <td class="is-numeric">
+                        {% if row['movement_type'] == 'purchase' %}
+                        {{ "{:,.2f}".format(row['amount']) }}
+                        {% else %}
+                        &ndash;
+                        {% endif %}
+                    </td>
+                    <td class="reason-cell">
+                        {% if row['reason'] %}{{ row['reason'] }}{% else %}&ndash;{% endif %}
+                    </td>
+                    <td>{{ row['created_at'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pager.pages > 1 %}
+    <nav class="pager" aria-label="Stock movement pages">
+        <span class="pager-info">
+            Showing rows {{ "{:,}".format(pager.first_row) }}&ndash;{{ "{:,}".format(pager.last_row) }}
+            of {{ "{:,}".format(pager.total) }}
+        </span>
+        <div class="pager-controls">
+            {% if pager.has_prev %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('inventory.movements', **pager.prev_query) }}">Previous</a>
+            {% endif %}
+            <span class="pager-page">Page {{ pager.page }} of {{ pager.pages }}</span>
+            {% if pager.has_next %}
+            <a class="btn btn-ghost btn-sm"
+               href="{{ url_for('inventory.movements', **pager.next_query) }}">Next</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12h12"></path>
+                <path d="M12 6l6 6-6 6"></path>
+                <path d="M20 4v16"></path>
+            </svg>
+        </span>
+        <h2>No stock movements found</h2>
+        <p>
+            Nothing matches the filters above. Record a purchase or clear the
+            filters to see the movement history.
+        </p>
+        <a class="btn btn-primary" href="{{ url_for('inventory.purchase') }}">Record purchase</a>
+    </div>
+    {% endif %}
+
+    <section class="profile-card">
+        <h2>What these entries mean</h2>
+        <ul class="schema-list">
+            <li>
+                A <strong>purchase</strong> adds the bought quantity to the fruit's
+                purchased quantity, so it becomes part of the available stock.
+            </li>
+            <li>
+                A <strong>stock adjustment</strong> corrects the stock without a
+                purchase. A positive quantity adds stock, a negative quantity
+                removes it, and the reason explains why.
+            </li>
+            <li>
+                Both are stored in their own table. They never change the imported
+                dataset rows or the manual sales records, and they are never
+                counted twice.
+            </li>
+            <li>
+                Purchases and adjustments carry no opening stock or reorder level
+                of their own; those come from the historical dataset, so a
+                movement-only day reports no opening stock rather than zero.
+            </li>
+        </ul>
+    </section>
+</section>
+{% endblock %}

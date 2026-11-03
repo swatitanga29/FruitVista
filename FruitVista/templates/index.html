@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ app_name }} &middot; {{ tagline }}{% endblock %}
+
+{% block content %}
+<!-- ------------------------------------------------------------------ -->
+<!-- Hero                                                               -->
+<!-- ------------------------------------------------------------------ -->
+<section class="hero">
+    <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
+    <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
+
+    <div class="container hero-inner">
+        <div class="hero-copy">
+            <span class="chip">Fruit Market Analytics &middot; Karnataka</span>
+
+            <h1 class="hero-title">
+                {{ app_name }}
+                <span class="hero-title-accent">{{ tagline }}</span>
+            </h1>
+
+            <p class="hero-theme">{{ theme }}</p>
+
+            <p class="hero-description">
+                FruitVista brings daily sales, stock movement, wastage and profit
+                together in one place for fruit market administrators and vendors,
+                and uses machine learning to forecast selling prices across five
+                Karnataka districts.
+            </p>
+
+            <div class="hero-actions">
+                {% if current_user %}
+                {% if current_user['role'] == 'admin' %}
+                <a class="btn btn-primary" href="{{ url_for('admin.index') }}">Go to Admin Dashboard</a>
+                {% else %}
+                <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}">Go to My Dashboard</a>
+                {% endif %}
+                <a class="btn btn-ghost" href="#features">Explore Features</a>
+                {% else %}
+                <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Get Started</a>
+                <a class="btn btn-ghost" href="{{ url_for('admin.login') }}">Admin Login</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+            <svg viewBox="0 0 440 360" role="presentation">
+                <defs>
+                    <linearGradient id="homePanel" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#f8fcf4"></stop>
+                        <stop offset="100%" stop-color="#e4f4ea"></stop>
+                    </linearGradient>
+                    <linearGradient id="homeBowl" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#a8e05f"></stop>
+                        <stop offset="100%" stop-color="#6fae1f"></stop>
+                    </linearGradient>
+                    <radialGradient id="homeOrange" cx="35%" cy="30%" r="75%">
+                        <stop offset="0%" stop-color="#ffd27a"></stop>
+                        <stop offset="100%" stop-color="#ef8a0c"></stop>
+                    </radialGradient>
+                    <radialGradient id="homeApple" cx="35%" cy="30%" r="75%">
+                        <stop offset="0%" stop-color="#ff8f78"></stop>
+                        <stop offset="100%" stop-color="#cf3524"></stop>
+                    </radialGradient>
+                    <radialGradient id="homeLime" cx="35%" cy="30%" r="75%">
+                        <stop offset="0%" stop-color="#dcf58c"></stop>
+                        <stop offset="100%" stop-color="#8bc34a"></stop>
+                    </radialGradient>
+                    <radialGradient id="homeGrape" cx="35%" cy="30%" r="75%">
+                        <stop offset="0%" stop-color="#b48fdd"></stop>
+                        <stop offset="100%" stop-color="#6b3fb0"></stop>
+                    </radialGradient>
+                </defs>
+
+                <rect x="0" y="0" width="440" height="360" rx="30" fill="url(#homePanel)"></rect>
+                <circle cx="220" cy="158" r="122" fill="#dcefd0" opacity="0.8"></circle>
+
+                <path d="M118 96c-24-8-42 0-50 20 22 12 42 6 50-20Z" fill="#7cb342"></path>
+                <path d="M318 100c24-10 44-4 54 16-22 14-44 10-54-16Z" fill="#8bc34a"></path>
+
+                <ellipse cx="222" cy="330" rx="128" ry="13" fill="#0b3d25" opacity="0.08"></ellipse>
+
+                <!-- grapes -->
+                <g>
+                    <circle cx="140" cy="152" r="15" fill="url(#homeGrape)"></circle>
+                    <circle cx="164" cy="140" r="15" fill="url(#homeGrape)"></circle>
+                    <circle cx="164" cy="168" r="15" fill="url(#homeGrape)"></circle>
+                    <circle cx="188" cy="152" r="15" fill="url(#homeGrape)"></circle>
+                    <circle cx="140" cy="180" r="15" fill="url(#homeGrape)"></circle>
+                    <circle cx="188" cy="180" r="15" fill="url(#homeGrape)"></circle>
+                </g>
+
+                <!-- orange -->
+                <circle cx="292" cy="152" r="48" fill="url(#homeOrange)"></circle>
+                <path d="M292 110v84M248 152h88" stroke="#d9760a" stroke-width="2" opacity="0.22"></path>
+                <ellipse cx="276" cy="136" rx="13" ry="9" fill="#ffffff" opacity="0.35"></ellipse>
+
+                <!-- limes -->
+                <circle cx="176" cy="226" r="27" fill="url(#homeLime)"></circle>
+                <circle cx="302" cy="224" r="25" fill="url(#homeLime)"></circle>
+
+                <!-- apple with a leaf -->
+                <circle cx="222" cy="208" r="41" fill="url(#homeApple)"></circle>
+                <path d="M222 170c0-11 6-19 17-22" stroke="#7a4a1d" stroke-width="5"
+                      fill="none" stroke-linecap="round"></path>
+                <path d="M232 168c15-11 32-7 39 8-15 11-32 7-39-8Z" fill="#8bc34a"></path>
+                <ellipse cx="206" cy="196" rx="11" ry="8" fill="#ffffff" opacity="0.32"></ellipse>
+
+                <!-- bowl -->
+                <path d="M104 242h232c0 44-38 74-116 74s-116-30-116-74Z" fill="url(#homeBowl)"></path>
+                <path d="M104 242h232" stroke="#ffffff" stroke-width="4" opacity="0.45"></path>
+            </svg>
+        </div>
+    </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Data and prediction notice                                         -->
+<!-- ------------------------------------------------------------------ -->
+<section class="container">
+    <div class="notice" role="note">
+        <span class="notice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 8h.01"></path>
+                <path d="M11 12h1v4h1"></path>
+            </svg>
+        </span>
+        <div class="notice-body">
+            <p>
+                <strong>Synthetic historical dataset.</strong>
+                Every sales, stock, wastage and price figure in FruitVista comes from a
+                generated synthetic dataset covering 2022&ndash;2026, used to demonstrate
+                the analytics and prediction workflow. It is
+                <strong>not verified real-world market data</strong>.
+            </p>
+            <p>
+                <strong>Experimental estimates.</strong>
+                The machine-learning price, sales and demand forecasts are experimental
+                estimates produced from that synthetic dataset. They are not verified
+                market forecasts and must not be used for real trading decisions.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Features                                                           -->
+<!-- ------------------------------------------------------------------ -->
+<section class="section container" id="features">
+    <header class="section-header">
+        <span class="section-eyebrow">What the platform does</span>
+        <h2>Four pillars of the FruitVista platform</h2>
+        <p>
+            Every pillar reads from the same SQLite database, so historical imports
+            and manually entered records always produce consistent results.
+        </p>
+    </header>
+
+    <div class="card-grid">
+        <article class="card">
+            <span class="card-icon icon-green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 20V10"></path>
+                    <path d="M10 20V4"></path>
+                    <path d="M16 20v-7"></path>
+                    <path d="M22 20H2"></path>
+                </svg>
+            </span>
+            <h3>Sales Analytics</h3>
+            <p>
+                Quantities sold, revenue, demand and availability percentages broken
+                down by district, fruit, category and date range.
+            </p>
+        </article>
+
+        <article class="card">
+            <span class="card-icon icon-blue" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                    <path d="M3 7v10l9 4 9-4V7"></path>
+                    <path d="M12 11v10"></path>
+                </svg>
+            </span>
+            <h3>Inventory Management</h3>
+            <p>
+                Opening, purchased and closing stock with reorder levels and low-stock
+                alerts, alongside damaged quantity and wastage cost.
+            </p>
+        </article>
+
+        <article class="card">
+            <span class="card-icon icon-lime" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 17l6-6 4 4 8-8"></path>
+                    <path d="M15 7h6v6"></path>
+                </svg>
+            </span>
+            <h3>Price Prediction</h3>
+            <p>
+                Machine-learning models trained on the stored history estimate future
+                selling prices per kilogram, so purchases can be planned ahead.
+            </p>
+            <span class="card-tag">Experimental estimates</span>
+        </article>
+
+        <article class="card">
+            <span class="card-icon icon-purple" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18h6"></path>
+                    <path d="M10 21h4"></path>
+                    <path d="M12 3a6 6 0 0 0-3.6 10.8c.5.4.8 1 .9 1.7h5.4c.1-.7.4-1.3.9-1.7A6 6 0 0 0 12 3Z"></path>
+                </svg>
+            </span>
+            <h3>Market Insights</h3>
+            <p>
+                Plain-language observations, seasonal patterns and five-district
+                comparisons generated from the figures the other modules publish.
+            </p>
+        </article>
+    </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Project highlights                                                 -->
+<!-- ------------------------------------------------------------------ -->
+<section class="section section-tinted" id="highlights">
+    <div class="container">
+        <header class="section-header">
+            <span class="section-eyebrow">Project highlights</span>
+            <h2>Coverage at a glance</h2>
+            <p>
+                FruitVista runs on a single shared catalogue and one historical
+                dataset that every module reads from.
+            </p>
+        </header>
+
+        <div class="highlight-grid">
+            <article class="highlight-card">
+                <span class="highlight-value">{{ districts|length }}</span>
+                <h3>Karnataka districts</h3>
+                <p>
+                    Bengaluru Urban, Chikkaballapura, Mysuru, Kolar and Vijayapura.
+                </p>
+            </article>
+
+            <article class="highlight-card">
+                <span class="highlight-value">{{ total_fruits }}</span>
+                <h3>Fruits tracked</h3>
+                <p>
+                    Across three categories: dry fruits, seasonal fruits and general
+                    fruits.
+                </p>
+            </article>
+
+            <article class="highlight-card">
+                <span class="highlight-value">2022&ndash;2026</span>
+                <h3>Historical data</h3>
+                <p>
+                    Daily synthetic records covering sales, stock movement, wastage and
+                    prices for every district and fruit.
+                </p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Coverage                                                           -->
+<!-- ------------------------------------------------------------------ -->
+<section class="section container" id="coverage">
+    <header class="section-header">
+        <span class="section-eyebrow">Catalogue</span>
+        <h2>The fruits behind every figure</h2>
+        <p>
+            Districts, categories and the fruits in each &mdash; the same catalogue
+            used by every module, so historical imports and manual entries always
+            reference the same records.
+        </p>
+    </header>
+
+    <div class="district-row">
+        {% for district in districts %}
+        <span class="district-pill">{{ district }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="category-grid">
+        {% for category, fruits in fruit_categories.items() %}
+        <article class="category-card">
+            <header>
+                <h3>{{ category }}</h3>
+                <span class="category-count">{{ fruits|length }} fruits</span>
+            </header>
+            <ul class="fruit-list">
+                {% for fruit in fruits %}
+                <li>{{ fruit }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

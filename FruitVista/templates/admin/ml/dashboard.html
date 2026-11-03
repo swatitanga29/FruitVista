@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set view = ml.views[ml.tab] %}
+
+{% macro metric_cards(cards) %}
+<section class="metric-grid" aria-label="Prediction summary">
+    {% for item in cards %}
+    <article class="metric-card">
+        <p class="metric-label">{{ item.label }}</p>
+        <p class="metric-value">{{ item.value }}</p>
+        {% if item.hint %}
+        <p class="metric-hint">{{ item.hint }}</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+{% endmacro %}
+
+{% macro chart_grid(charts) %}
+{% if charts %}
+<div class="chart-grid">
+    {% for chart in charts %}
+    <article class="chart-card">
+        <header class="chart-head">
+            <h3>{{ chart.title }}</h3>
+            <p>{{ chart.subtitle }}</p>
+        </header>
+        <div class="chart-canvas">
+            <canvas id="{{ chart.id }}" aria-label="{{ chart.title }}"></canvas>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro table_list(tables) %}
+{% for table in tables %}
+<section class="profile-card summary-table-card">
+    <h2>{{ table.title }}</h2>
+    {% if table.rows %}
+    <div class="table-wrap table-wrap-plain">
+        <table class="data-table data-table-compact">
+            <caption class="visually-hidden">{{ table.title }}</caption>
+            <thead>
+                <tr>
+                    {% for column in table.columns %}
+                    <th scope="col"{% if not loop.first %} class="is-numeric"{% endif %}>{{ column }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table.rows %}
+                <tr>
+                    {% for cell in row %}
+                    <td{% if not loop.first %} class="is-numeric"{% endif %}>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="profile-note">No rows fall in this forecast.</p>
+    {% endif %}
+    {% if table.note %}
+    <p class="profile-note method-note">{{ table.note }}</p>
+    {% endif %}
+</section>
+{% endfor %}
+{% endmacro %}
+
+{% macro model_summary(model, title) %}
+<section class="profile-card">
+    <h2>{{ title }}</h2>
+    {% if model.available %}
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Algorithm</span>
+            <span class="summary-value">{{ model.algorithm_label }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Model version</span>
+            <span class="summary-value">v{{ model.version }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Trained on</span>
+            <span class="summary-value">{{ model.trained_at }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Training period</span>
+            <span class="summary-value">{{ model.train_start }} to {{ model.train_end }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Test period</span>
+            <span class="summary-value">{{ model.test_start }} to {{ model.test_end }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Features</span>
+            <span class="summary-value">{{ model.feature_count }}</span>
+        </div>
+    </div>
+    <p class="profile-note method-note">
+        Scored on {{ '{:,}'.format(model.test_rows) }} held-back rows after being
+        trained on {{ '{:,}'.format(model.train_rows) }} rows. MAE
+        {{ '%.4f'|format(model.mae) }}, RMSE {{ '%.4f'|format(model.rmse) }},
+        R&sup2; {{ '%.4f'|format(model.r2) }}.
+    </p>
+    {% else %}
+    <p class="profile-note">This task has not been trained yet.</p>
+    {% endif %}
+</section>
+{% endmacro %}
+
+{% macro forecast_period(period) %}
+<div class="summary-strip">
+    <div class="summary-item">
+        <span class="summary-label">Last recorded day</span>
+        <span class="summary-value">{{ period.last_observed }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">Forecast starts</span>
+        <span class="summary-value">{{ period.start_date }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">Forecast ends</span>
+        <span class="summary-value">{{ period.end_date }}</span>
+    </div>
+    <div class="summary-item">
+        <span class="summary-label">Forecast days</span>
+        <span class="summary-value">{{ period.days }}</span>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro unavailable_box(view) %}
+<div class="empty-state empty-state-compact">
+    <span class="empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a9 9 0 1 0 9 9"></path>
+            <path d="M12 7.5V12l3 2"></path>
+            <path d="M16.5 3.5h4v4"></path>
+        </svg>
+    </span>
+    <h2>No prediction for this selection</h2>
+    <p>{{ view.error }}</p>
+</div>
+{% endmacro %}
+
+{% block title %}Machine Learning &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Machine Learning</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Machine Learning &amp; Prediction</h1>
+            <p>
+                Price, sales and demand forecasts built from the stored daily
+                history. Each task compares several algorithms on the same
+                chronological split, keeps the one that scores best and reports
+                exactly how far it missed. Nothing is retrained when a page is
+                opened.
+            </p>
+        </div>
+        <span class="synthetic-tag">{{ ml.experimental_tag }}</span>
+    </header>
+
+    <!-- Notices ------------------------------------------------------------ -->
+    <section class="profile-card report-header">
+        <div class="report-brand">
+            <span class="report-name">{{ app_name }}</span>
+            <span class="report-tagline">{{ tagline }}</span>
+        </div>
+        <h2 class="report-title">{{ ml.filters.tab_name }}</h2>
+        <p class="profile-note">{{ ml.experimental_notice }}</p>
+        <p class="profile-note method-note">{{ ml.synthetic_notice }}</p>
+        <p class="profile-note">
+            Models stored: {{ ml.counts.total }} version(s),
+            {{ ml.counts.active }} active.
+            {% if not ml.trained %}
+            No model has been trained yet - use the training action below before
+            asking for a forecast.
+            {% endif %}
+        </p>
+    </section>
+
+    <!-- Training action ---------------------------------------------------- -->
+    <section class="profile-card ml-train-card">
+        <h2>Train the models</h2>
+        <p class="profile-note">
+            Training compares Linear Regression, Random Forest, Gradient
+            Boosting and a seasonal baseline on the same chronological split,
+            keeps the best performer for each task and saves it as a new
+            version. A run reads the stored history only; it never changes a
+            record. This is the only place training starts.
+        </p>
+
+        <form class="filter-actions" method="post" action="{{ url_for('ml.train') }}"
+              data-ml-train>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary" type="submit" data-ml-train-button>
+                {% if ml.trained %}Retrain all models{% else %}Train all models{% endif %}
+            </button>
+            <span class="filter-status" data-ml-train-status>
+                Training can take a little while on a laptop; the page stays on
+                the Model Performance view afterwards.
+            </span>
+        </form>
+    </section>
+
+    <!-- Prediction views --------------------------------------------------- -->
+    <nav class="ml-tabs" aria-label="Prediction views">
+        {% for tab in ml.tabs %}
+        <a class="ml-tab{% if tab.key == ml.tab %} is-active{% endif %}"
+           href="{{ url_for('ml.index', **tab_link(tab.key)) }}">
+            {{ tab.name }}
+        </a>
+        {% endfor %}
+    </nav>
+
+    <!-- Filters ------------------------------------------------------------ -->
+    {% if ml.tab in ['price', 'sales', 'demand'] %}
+    <section class="profile-card filter-card">
+        <h2>Forecast filters</h2>
+        <p class="profile-note">
+            A forecast is always built for one fruit in one district, because a
+            model reads the previous days of that particular series. The
+            forecast begins the day after the last recorded day unless a later
+            start date is chosen.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('ml.index') }}">
+            <input type="hidden" name="tab" value="{{ ml.tab }}">
+
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if ml.selection.fruit and ml.selection.fruit['id'] == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if ml.selection.district and ml.selection.district['id'] == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="start">Forecast start date (optional)</label>
+                    <div class="input-wrap">
+                        <input type="date" id="start" name="start" value="{{ filters.start }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="horizon">Forecast horizon (days)</label>
+                    <div class="input-wrap">
+                        <input type="number" id="horizon" name="horizon"
+                               value="{{ ml.horizon }}" min="1" max="90" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Build the forecast</button>
+                <a class="btn btn-ghost"
+                   href="{{ url_for('ml.index', tab=ml.tab) }}">Reset</a>
+                <span class="filter-status">
+                    {{ ml.selection.label }} &middot;
+                    {{ ml.selection.observations }} recorded day(s) available
+                    &middot; horizon {{ ml.horizon }} day(s).
+                </span>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if ml.tab == 'price' %}
+    <!-- Price prediction -------------------------------------------------- -->
+    {% if view.available %}
+    <section class="profile-card">
+        <h2>Predicted price for {{ ml.selection.label }}</h2>
+        {{ forecast_period(view.period) }}
+    </section>
+
+    {{ metric_cards(view.cards) }}
+    {{ chart_grid(view.charts) }}
+    {{ table_list(view.tables) }}
+    {{ model_summary(view.model, 'Model behind the price prediction') }}
+    {% else %}
+    {{ unavailable_box(view) }}
+    {{ model_summary(view.model, 'Model behind the price prediction') }}
+    {% endif %}
+
+    {% elif ml.tab == 'sales' %}
+    <!-- Sales forecasting -------------------------------------------------- -->
+    {% if view.available %}
+    <section class="profile-card">
+        <h2>Predicted sales for {{ ml.selection.label }}</h2>
+        {{ forecast_period(view.period) }}
+    </section>
+
+    {{ metric_cards(view.cards) }}
+    {{ chart_grid(view.charts) }}
+    {{ table_list(view.tables) }}
+    {{ model_summary(view.model, 'Model behind the sales forecast') }}
+    {% else %}
+    {{ unavailable_box(view) }}
+    {{ model_summary(view.model, 'Model behind the sales forecast') }}
+    {% endif %}
+
+    {% elif ml.tab == 'demand' %}
+    <!-- Demand forecasting ------------------------------------------------- -->
+    {% if view.available %}
+    <section class="profile-card">
+        <h2>Predicted demand for {{ ml.selection.label }}</h2>
+        {{ forecast_period(view.period) }}
+    </section>
+
+    {{ metric_cards(view.cards) }}
+    {{ chart_grid(view.charts) }}
+    {{ table_list(view.tables) }}
+    {{ model_summary(view.model, 'Model behind the demand forecast') }}
+    {% else %}
+    {{ unavailable_box(view) }}
+    {{ model_summary(view.model, 'Model behind the demand forecast') }}
+    {% endif %}
+
+    {% elif ml.tab == 'performance' %}
+    <!-- Model performance -------------------------------------------------- -->
+    {% for task in view.tasks %}
+    <section class="insight-section">
+        <header class="section-header">
+            <span class="section-eyebrow">Task</span>
+            <h2>{{ task.label }}</h2>
+        </header>
+
+        {% if task.available %}
+        {{ model_summary(task.model, task.label ~ ' - selected model') }}
+
+        <section class="profile-card summary-table-card">
+            <h2>Algorithm comparison</h2>
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">{{ task.label }} algorithm comparison</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Algorithm</th>
+                            <th scope="col">Family</th>
+                            <th scope="col" class="is-numeric">MAE</th>
+                            <th scope="col" class="is-numeric">RMSE</th>
+                            <th scope="col" class="is-numeric">R&sup2;</th>
+                            <th scope="col">Selected</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in task.candidates %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td>{{ row.family }}</td>
+                            <td class="is-numeric">{{ '%.4f'|format(row.mae) }}</td>
+                            <td class="is-numeric">{{ '%.4f'|format(row.rmse) }}</td>
+                            <td class="is-numeric">{{ '%.4f'|format(row.r2) }}</td>
+                            <td>{% if row.algorithm == task.model.algorithm %}Yes{% else %}&ndash;{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="profile-note method-note">
+                Every algorithm is trained on the same rows and scored on the
+                same later test rows. The selected model is the one with the
+                lowest RMSE.
+            </p>
+        </section>
+
+        {{ chart_grid(task.charts) }}
+        {% else %}
+        <p class="profile-note">{{ task.error }}</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    <section class="profile-card summary-table-card">
+        <h2>Trained model versions</h2>
+        {% if view.versions %}
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">Trained model versions</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Task</th>
+                        <th scope="col">Algorithm</th>
+                        <th scope="col" class="is-numeric">Version</th>
+                        <th scope="col">Trained</th>
+                        <th scope="col">Test period</th>
+                        <th scope="col" class="is-numeric">MAE</th>
+                        <th scope="col" class="is-numeric">RMSE</th>
+                        <th scope="col" class="is-numeric">R&sup2;</th>
+                        <th scope="col">Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in view.versions %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td>{{ row.algorithm_label }}</td>
+                        <td class="is-numeric">v{{ row.version }}</td>
+                        <td>{{ row.trained_at }}</td>
+                        <td>{{ row.test_start }} to {{ row.test_end }}</td>
+                        <td class="is-numeric">{{ '%.4f'|format(row.mae) }}</td>
+                        <td class="is-numeric">{{ '%.4f'|format(row.rmse) }}</td>
+                        <td class="is-numeric">{{ '%.4f'|format(row.r2) }}</td>
+                        <td>{% if row.is_active %}Yes{% else %}&ndash;{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="profile-note">No model has been trained yet.</p>
+        {% endif %}
+    </section>
+
+    {% elif ml.tab == 'history' %}
+    <!-- Prediction history ------------------------------------------------- -->
+    <section class="profile-card summary-table-card">
+        <h2>Saved forecasts</h2>
+        {% if view.rows %}
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">Saved forecasts</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Saved</th>
+                        <th scope="col">Task</th>
+                        <th scope="col">Fruit</th>
+                        <th scope="col">District</th>
+                        <th scope="col">Model</th>
+                        <th scope="col">Forecast period</th>
+                        <th scope="col" class="is-numeric">Predicted</th>
+                        <th scope="col" class="is-numeric">Predicted revenue (INR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in view.rows %}
+                    <tr>
+                        <td>{{ row.created_at }}</td>
+                        <td>{{ row.label }}</td>
+                        <td>{{ row.fruit_name }}</td>
+                        <td>{{ row.district_name }}</td>
+                        <td>{{ row.algorithm_label }} v{{ row.model_version }}</td>
+                        <td>{{ row.start_date }} to {{ row.end_date }} ({{ row.horizon_days }} day(s))</td>
+                        <td class="is-numeric">{{ '%.2f'|format(row.predicted) }}</td>
+                        <td class="is-numeric">
+                            {% if row.predicted_revenue is not none %}
+                            {{ '%.2f'|format(row.predicted_revenue) }}
+                            {% else %}&ndash;{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="profile-note method-note">
+            {{ view.count }} forecast(s) have been saved. A price forecast stores
+            the average predicted price per kilogram; a sales or demand forecast
+            stores the total predicted quantity in kilograms.
+        </p>
+        {% else %}
+        <p class="profile-note">
+            No forecast has been saved yet. Open a prediction view and use the
+            save action to keep it here.
+        </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Save to history ---------------------------------------------------- -->
+    {% if ml.tab in ['price', 'sales', 'demand'] and view.available %}
+    <section class="profile-card">
+        <h2>Keep this forecast</h2>
+        <p class="profile-note">
+            Save the forecast currently on screen into the prediction history so
+            it can be compared later. Nothing else is stored.
+        </p>
+        <form class="filter-actions" method="post"
+              action="{{ url_for('ml.keep', **tab_link(ml.tab)) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary" type="submit">Save to history</button>
+            <a class="btn btn-ghost"
+               href="{{ url_for('ml.index', tab='history') }}">View history</a>
+        </form>
+    </section>
+    {% endif %}
+
+    <!-- Method notes ------------------------------------------------------- -->
+    <section class="profile-card">
+        <h2>How the predictions are produced</h2>
+        <ul class="schema-list">
+            {% for note in ml.notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+        <p class="profile-note">
+            The same figures are available as JSON for the current filters at
+            <code>{{ url_for('ml.data', **tab_link(ml.tab)) }}</code>.
+        </p>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="ml-chart-data" type="application/json">{{ ml.charts | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

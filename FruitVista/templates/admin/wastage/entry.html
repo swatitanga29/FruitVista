@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set is_edit = mode == 'edit' %}
+
+{% block title %}{{ 'Edit wastage entry' if is_edit else 'Record wastage' }} &middot; Wastage Management &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('wastage.index') }}">Wastage Management</a>
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('wastage.records') }}">Wastage records</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">{{ 'Edit entry' if is_edit else 'Record wastage' }}</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>{{ 'Edit wastage entry' if is_edit else 'Record wastage' }}</h1>
+            <p>
+                Record fruit that was damaged or lost for one fruit in one
+                district on one day. The wastage cost is calculated from the
+                damaged quantity and the cost per kilogram, and the reason is
+                stored with the entry.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-ghost" href="{{ url_for('wastage.records') }}">Wastage records</a>
+        </div>
+    </header>
+
+    {% if errors.form %}
+    <div class="form-alert" role="alert">
+        <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7.5v5"></path>
+                <path d="M12 16.2h.01"></path>
+            </svg>
+        </span>
+        <p>{{ errors.form }}</p>
+    </div>
+    {% endif %}
+
+    {% if is_edit %}
+    <p class="profile-note method-note">
+        You are editing a manual wastage entry that was recorded in this module.
+        Historical wastage rows from the imported dataset are never edited here.
+    </p>
+    {% endif %}
+
+    <section class="profile-card sales-card">
+        <form class="form" method="post"
+              action="{{ url_for('wastage.edit', record_id=record['id']) if is_edit else url_for('wastage.entry') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <!-- 1. Wastage date -------------------------------------- -->
+                <div class="form-field{% if errors.wastage_date %} has-error{% endif %}">
+                    <label for="wastage_date">Date</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect>
+                                <path d="M3.5 9.5h17"></path>
+                                <path d="M8 3.5v3"></path>
+                                <path d="M16 3.5v3"></path>
+                            </svg>
+                        </span>
+                        <input type="date" id="wastage_date" name="wastage_date"
+                               value="{{ form.wastage_date }}" max="{{ today }}" required
+                               {% if errors.wastage_date %}aria-invalid="true" aria-describedby="wastage_date-error"{% endif %}>
+                    </div>
+                    {% if errors.wastage_date %}
+                    <p class="form-error" id="wastage_date-error">{{ errors.wastage_date }}</p>
+                    {% else %}
+                    <p class="form-hint">The date the damage was recorded. Future dates are not accepted.</p>
+                    {% endif %}
+                </div>
+
+                <!-- 2. District ------------------------------------------ -->
+                <div class="form-field{% if errors.district_id %} has-error{% endif %}">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 21.5s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"></path>
+                                <circle cx="12" cy="10.2" r="2.6"></circle>
+                            </svg>
+                        </span>
+                        <select id="district_id" name="district_id" required
+                                {% if errors.district_id %}aria-invalid="true" aria-describedby="district_id-error"{% endif %}>
+                            <option value="">Select a district</option>
+                            {% for district in districts %}
+                            <option value="{{ district['id'] }}"
+                                    {% if form.district_id == district['id']|string %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.district_id %}
+                    <p class="form-error" id="district_id-error">{{ errors.district_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 3. Fruit category ------------------------------------ -->
+                <div class="form-field{% if errors.category %} has-error{% endif %}">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 6.5h16"></path>
+                                <path d="M4 12h16"></path>
+                                <path d="M4 17.5h10"></path>
+                            </svg>
+                        </span>
+                        <select id="category" name="category" required
+                                {% if errors.category %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                            <option value="">Select a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}"
+                                    {% if form.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if errors.category %}
+                    <p class="form-error" id="category-error">{{ errors.category }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 4. Fruit name ---------------------------------------- -->
+                <div class="form-field{% if errors.fruit_id %} has-error{% endif %}">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 8.2c0-2.3 1.7-4.2 4-4.2.3 2.5-1.5 4.4-4 4.4Z"></path>
+                                <path d="M12 21.2c-4.1 0-7.1-2.7-7.1-6.7 0-3.6 3-6.3 7.1-6.3s7.1 2.7 7.1 6.3c0 4-3 6.7-7.1 6.7Z"></path>
+                            </svg>
+                        </span>
+                        <select id="fruit_id" name="fruit_id" required
+                                {% if errors.fruit_id %}aria-invalid="true" aria-describedby="fruit_id-error"{% endif %}>
+                            <option value="">Select a fruit</option>
+                            {% for fruit in fruits %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if form.fruit_id == fruit['id']|string %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="form-hint">The list follows the fruit category chosen above.</p>
+                    {% if errors.fruit_id %}
+                    <p class="form-error" id="fruit_id-error">{{ errors.fruit_id }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <!-- 5. Damaged quantity ---------------------------------- -->
+                <div class="form-field{% if errors.damaged_quantity %} has-error{% endif %}">
+                    <label for="damaged_quantity">Damaged quantity (kg)</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4.5 8.5h15l-1.4 10.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8Z"></path>
+                                <path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"></path>
+                            </svg>
+                        </span>
+                        <input type="number" id="damaged_quantity" name="damaged_quantity"
+                               value="{{ form.damaged_quantity }}" min="0.001" step="0.001"
+                               inputmode="decimal" placeholder="0.000" required
+                               {% if errors.damaged_quantity %}aria-invalid="true" aria-describedby="damaged_quantity-error"{% endif %}>
+                    </div>
+                    {% if errors.damaged_quantity %}
+                    <p class="form-error" id="damaged_quantity-error">{{ errors.damaged_quantity }}</p>
+                    {% else %}
+                    <p class="form-hint">The weight of fruit that was damaged or lost. It must be greater than zero.</p>
+                    {% endif %}
+                </div>
+
+                <!-- 6. Cost per kg --------------------------------------- -->
+                <div class="form-field{% if errors.cost_per_kg %} has-error{% endif %}">
+                    <label for="cost_per_kg">Cost per kg (INR per kg)</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 5h10"></path>
+                                <path d="M7 9.5h10"></path>
+                                <path d="M15.5 5 9 19"></path>
+                            </svg>
+                        </span>
+                        <input type="number" id="cost_per_kg" name="cost_per_kg"
+                               value="{{ form.cost_per_kg }}" min="0.01" step="0.01"
+                               inputmode="decimal" placeholder="0.00" required
+                               {% if errors.cost_per_kg %}aria-invalid="true" aria-describedby="cost_per_kg-error"{% endif %}>
+                    </div>
+                    {% if errors.cost_per_kg %}
+                    <p class="form-error" id="cost_per_kg-error">{{ errors.cost_per_kg }}</p>
+                    {% else %}
+                    <p class="form-hint">The cost of one kilogram of the fruit. It must be greater than zero.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 7. Wastage cost ------------------------------------------ -->
+            <div class="form-field revenue-field">
+                <label for="wastage_cost">Wastage cost (INR)</label>
+                <div class="input-wrap">
+                    <span class="input-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="8.5"></circle>
+                            <path d="M9 8.5h6"></path>
+                            <path d="M9 12h6"></path>
+                            <path d="M12 8.5V16"></path>
+                        </svg>
+                    </span>
+                    <input type="text" id="wastage_cost" data-wastage-output readonly
+                           value="" placeholder="0.00" tabindex="-1" aria-live="polite">
+                </div>
+                <p class="form-hint">
+                    Calculated automatically as damaged quantity x cost per kilogram
+                    and saved with the entry.
+                </p>
+            </div>
+
+            <!-- 8. Reason ------------------------------------------------- -->
+            <div class="form-field{% if errors.reason %} has-error{% endif %}">
+                <label for="reason">Reason for wastage</label>
+                <div class="input-wrap">
+                    <input type="text" id="reason" name="reason" value="{{ form.reason }}"
+                           maxlength="200" placeholder="For example: spoilage in transit"
+                           required
+                           {% if errors.reason %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>
+                </div>
+                <p class="form-hint">
+                    A short reason is required so the loss can be explained later.
+                </p>
+                {% if errors.reason %}
+                <p class="form-error" id="reason-error">{{ errors.reason }}</p>
+                {% endif %}
+            </div>
+
+            <div class="dashboard-actions">
+                <button class="btn btn-primary" type="submit">
+                    {{ 'Save changes' if is_edit else 'Save wastage entry' }}
+                </button>
+                <a class="btn btn-ghost" href="{{ url_for('wastage.records') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+</section>
+{% endblock %}

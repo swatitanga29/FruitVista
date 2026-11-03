@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Your account</span>
+            <h1>Welcome, {{ user['full_name'] }}</h1>
+            <p>You are signed in to {{ app_name }} &middot; {{ tagline }}</p>
+        </div>
+
+        <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost" type="submit">Logout</button>
+        </form>
+    </header>
+
+    <h2 class="dashboard-subheading">Account details</h2>
+
+    <dl class="account-grid">
+        <div class="account-card">
+            <dt>Full name</dt>
+            <dd>{{ user['full_name'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>Email address</dt>
+            <dd>{{ user['email'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>Mobile number</dt>
+            <dd>{{ user['mobile'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>District</dt>
+            <dd>{{ user['district'] }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>Account type</dt>
+            <dd>{{ user['role']|capitalize }}</dd>
+        </div>
+        <div class="account-card">
+            <dt>Registered on</dt>
+            <dd>{{ user['created_at'] }}</dd>
+        </div>
+    </dl>
+
+    <section class="dashboard-next">
+        <header class="section-header">
+            <span class="section-eyebrow">Next steps</span>
+            <h2>Manage your FruitVista account</h2>
+            <p>
+                Update your details or change your password at any time. Market
+                analytics and price prediction are managed by FruitVista
+                administrators.
+            </p>
+        </header>
+
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('account.profile') }}">Open my profile</a>
+            <a class="btn btn-ghost" href="{{ url_for('index') }}">Back to homepage</a>
+        </div>
+    </section>
+</section>
+{% endblock %}

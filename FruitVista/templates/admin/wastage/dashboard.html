@@ -1,0 +1,535 @@
+{% extends 'base.html' %}
+
+{% set category_labels = {
+    'Dry Fruits': 'Dry Fruit',
+    'Seasonal Fruits': 'Seasonal Fruit',
+    'General Fruits': 'General Fruit'
+} %}
+
+{% set source_labels = {
+    'historical': 'Historical',
+    'manual': 'Manual'
+} %}
+
+{% block title %}Wastage Management &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Wastage Management</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator module</span>
+            <h1>Wastage Management</h1>
+            <p>
+                Damaged quantities, wastage cost and wastage trends for every
+                fruit in every district. Totals are added up in the database, so
+                the page stays fast across the whole dataset.
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('wastage.entry') }}">Record wastage</a>
+            <a class="btn btn-ghost" href="{{ url_for('wastage.records') }}">Wastage records</a>
+        </div>
+    </header>
+
+    <!-- Filters ----------------------------------------------------------- -->
+    <section class="profile-card filter-card">
+        <h2>Filters</h2>
+        <p class="profile-note">
+            Combine any of the fields below. The record source filter switches
+            between the imported dataset and the entries recorded here.
+        </p>
+
+        <form class="form" method="get" action="{{ url_for('wastage.index') }}">
+            <div class="form-row form-row-filters">
+                <div class="form-field">
+                    <label for="date_from">Start date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_from" name="date_from"
+                               value="{{ filters.date_from }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="date_to">End date</label>
+                    <div class="input-wrap">
+                        <input type="date" id="date_to" name="date_to"
+                               value="{{ filters.date_to }}"
+                               {% if bounds['first_date'] %}min="{{ bounds['first_date'] }}"{% endif %}
+                               {% if bounds['last_date'] %}max="{{ bounds['last_date'] }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="district_id">District</label>
+                    <div class="input-wrap">
+                        <select id="district_id" name="district_id">
+                            <option value="">All districts</option>
+                            {% for district in options['districts'] %}
+                            <option value="{{ district['id'] }}"
+                                    {% if filters.district_id == district['id'] %}selected{% endif %}>
+                                {{ district['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="category">Fruit category</label>
+                    <div class="input-wrap">
+                        <select id="category" name="category">
+                            <option value="">All categories</option>
+                            {% for category in options['categories'] %}
+                            <option value="{{ category }}"
+                                    {% if filters.category == category %}selected{% endif %}>
+                                {{ category_labels.get(category, category) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="fruit_id">Fruit name</label>
+                    <div class="input-wrap">
+                        <select id="fruit_id" name="fruit_id">
+                            <option value="">All fruits</option>
+                            {% for fruit in options['fruits'] %}
+                            <option value="{{ fruit['id'] }}" data-category="{{ fruit['category'] }}"
+                                    {% if filters.fruit_id == fruit['id'] %}selected{% endif %}>
+                                {{ fruit['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label for="record_source">Record source</label>
+                    <div class="input-wrap">
+                        <select id="record_source" name="record_source">
+                            <option value="">All sources</option>
+                            <option value="historical"{% if filters.record_source == 'historical' %} selected{% endif %}>
+                                Historical dataset only
+                            </option>
+                            <option value="manual"{% if filters.record_source == 'manual' %} selected{% endif %}>
+                                Manual entries only
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Apply filters</button>
+                <a class="btn btn-ghost" href="{{ url_for('wastage.index') }}">Reset</a>
+                <span class="filter-status">
+                    Showing {{ "{:,}".format(summary.records) }} wastage
+                    record{{ '' if summary.records == 1 else 's' }}.
+                </span>
+            </div>
+        </form>
+    </section>
+
+    <!-- Summary cards ----------------------------------------------------- -->
+    <section class="metric-grid" aria-label="Wastage summary">
+        <article class="metric-card">
+            <span class="metric-icon icon-amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v6"></path>
+                    <path d="M6.5 6.5 12 9l5.5-2.5"></path>
+                    <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Damaged Quantity</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.damaged_quantity) }} kg</p>
+            <p class="metric-hint">damaged quantity, historical and manual together</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-purple" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="8.5"></circle>
+                    <path d="M9 8.5h6"></path>
+                    <path d="M9 12h6"></path>
+                    <path d="M12 8.5V16"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Total Wastage Cost</p>
+            <p class="metric-value">&#8377; {{ "{:,.2f}".format(summary.wastage_cost) }}</p>
+            <p class="metric-hint">damaged quantity x cost per kilogram</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 5 5 19"></path>
+                    <circle cx="6.8" cy="6.8" r="2.4"></circle>
+                    <circle cx="17.2" cy="17.2" r="2.4"></circle>
+                </svg>
+            </span>
+            <p class="metric-label">Wastage Percentage</p>
+            <p class="metric-value">
+                {% if summary.wastage_percentage is not none %}
+                {{ "{:.3f}".format(summary.wastage_percentage) }} %
+                {% else %}
+                Not available
+                {% endif %}
+            </p>
+            <p class="metric-hint">damaged quantity &divide; available stock x 100</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-blue" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+                    <path d="M14 3v5h5"></path>
+                    <path d="M9 14h6"></path>
+                    <path d="M9 18h4"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Wastage Records</p>
+            <p class="metric-value">{{ "{:,}".format(summary.records) }}</p>
+            <p class="metric-hint">rows with damage in the current selection</p>
+        </article>
+
+        <article class="metric-card">
+            <span class="metric-icon icon-green" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7l9-4 9 4-9 4-9-4Z"></path>
+                    <path d="M3 7v10l9 4 9-4V7"></path>
+                    <path d="M12 11v10"></path>
+                </svg>
+            </span>
+            <p class="metric-label">Available Stock Compared Against</p>
+            <p class="metric-value">{{ "{:,.2f}".format(summary.available_stock) }} kg</p>
+            <p class="metric-hint">historical available stock for the same filters</p>
+        </article>
+    </section>
+
+    <p class="profile-note method-note">{{ percentage_denominator }}</p>
+
+    <!-- Historical and manual split --------------------------------------- -->
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Historical damaged quantity</span>
+            <span class="summary-value">
+                {{ "{:,.2f}".format(sources.get('historical', {}).get('damaged_quantity', 0)) }} kg
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Historical wastage cost</span>
+            <span class="summary-value">
+                &#8377; {{ "{:,.2f}".format(sources.get('historical', {}).get('wastage_cost', 0)) }}
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Manually recorded damaged quantity</span>
+            <span class="summary-value">
+                {{ "{:,.2f}".format(sources.get('manual', {}).get('damaged_quantity', 0)) }} kg
+            </span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Manually recorded wastage cost</span>
+            <span class="summary-value">
+                &#8377; {{ "{:,.2f}".format(sources.get('manual', {}).get('wastage_cost', 0)) }}
+            </span>
+        </div>
+    </div>
+
+    <!-- District-wise and category-wise summaries ------------------------- -->
+    <div class="summary-tables">
+        <section class="profile-card summary-table-card">
+            <h2>District-wise wastage</h2>
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">Wastage totals for each district</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">District</th>
+                            <th scope="col" class="is-numeric">Damaged (kg)</th>
+                            <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                            <th scope="col" class="is-numeric">Records</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in district %}
+                        <tr>
+                            <td>{{ row['label'] }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                            <td class="is-numeric">{{ "{:,}".format(row['records']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="profile-card summary-table-card">
+            <h2>Category-wise wastage</h2>
+            <div class="table-wrap table-wrap-plain">
+                <table class="data-table data-table-compact">
+                    <caption class="visually-hidden">Wastage totals for each fruit category</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Fruit category</th>
+                            <th scope="col" class="is-numeric">Damaged (kg)</th>
+                            <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                            <th scope="col" class="is-numeric">Records</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in category %}
+                        <tr>
+                            <td>{{ category_labels.get(row['label'], row['label']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                            <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                            <td class="is-numeric">{{ "{:,}".format(row['records']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Fruit-wise wastage ------------------------------------------------- -->
+    <section class="profile-card summary-table-card">
+        <h2>Fruit-wise wastage</h2>
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">Wastage totals for each fruit</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Fruit</th>
+                        <th scope="col">Category</th>
+                        <th scope="col" class="is-numeric">Damaged (kg)</th>
+                        <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                        <th scope="col" class="is-numeric">Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in fruits %}
+                    <tr>
+                        <td>{{ row['label'] }}</td>
+                        <td>{{ category_labels.get(row['category'], row['category']) }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(row['records']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Charts ------------------------------------------------------------ -->
+    <div class="chart-grid wastage-charts">
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Fruit-wise wastage comparison</h3>
+                <p>Damaged kilograms for the fruits with the most wastage</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageFruit" aria-label="Fruit-wise wastage"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>District-wise wastage comparison</h3>
+                <p>Damaged kilograms for each district in the selection</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageDistrict" aria-label="District-wise wastage"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Category-wise wastage</h3>
+                <p>Share of the damaged quantity held by each category</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageCategory" aria-label="Category-wise wastage"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Highest-wastage fruits</h3>
+                <p>The ten fruits losing the most weight</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageTopFruits" aria-label="Highest-wastage fruits"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Monthly wastage trend</h3>
+                <p>Damaged kilograms recorded in each month</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageMonthly" aria-label="Monthly wastage trend"></canvas></div>
+        </article>
+
+        <article class="chart-card">
+            <header class="chart-head">
+                <h3>Wastage cost trend</h3>
+                <p>Wastage cost in rupees for each month</p>
+            </header>
+            <div class="chart-canvas"><canvas id="chartWastageCost" aria-label="Wastage cost trend"></canvas></div>
+        </article>
+    </div>
+
+    <!-- Yearly trend ------------------------------------------------------ -->
+    <section class="profile-card summary-table-card">
+        <h2>Yearly wastage trend</h2>
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">Wastage totals for each year</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Year</th>
+                        <th scope="col" class="is-numeric">Damaged (kg)</th>
+                        <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                        <th scope="col" class="is-numeric">Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in yearly %}
+                    <tr>
+                        <td>{{ row['label'] }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(row['records']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Daily trend ------------------------------------------------------- -->
+    <section class="profile-card summary-table-card">
+        <h2>Daily wastage trend</h2>
+        <p class="profile-note">
+            The most recent days in the selection that have wastage recorded,
+            newest first.
+        </p>
+        <div class="table-wrap table-wrap-plain">
+            <table class="data-table data-table-compact">
+                <caption class="visually-hidden">Wastage totals for each of the most recent days</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col" class="is-numeric">Damaged (kg)</th>
+                        <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                        <th scope="col" class="is-numeric">Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in daily|reverse %}
+                    <tr>
+                        <td>{{ row['label'] }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['damaged_quantity']) }}</td>
+                        <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                        <td class="is-numeric">{{ "{:,}".format(row['records']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Recent wastage records -------------------------------------------- -->
+    <h2 class="wastage-table-heading">Recent wastage records</h2>
+
+    {% if rows %}
+    <div class="table-wrap">
+        <table class="data-table wastage-table">
+            <caption class="visually-hidden">The most recent wastage records</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">District</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Fruit</th>
+                    <th scope="col" class="is-numeric">Damaged (kg)</th>
+                    <th scope="col" class="is-numeric">Cost per kg (&#8377;)</th>
+                    <th scope="col" class="is-numeric">Wastage cost (&#8377;)</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Record source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row['wastage_date'] }}</td>
+                    <td>{{ row['district_name'] }}</td>
+                    <td>{{ category_labels.get(row['fruit_category'], row['fruit_category']) }}</td>
+                    <td>{{ row['fruit_name'] }}</td>
+                    <td class="is-numeric">{{ "{:,.3f}".format(row['damaged_quantity']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['cost_per_kg']) }}</td>
+                    <td class="is-numeric">{{ "{:,.2f}".format(row['wastage_cost']) }}</td>
+                    <td class="reason-cell">
+                        {% if row['reason'] %}{{ row['reason'] }}{% else %}&ndash;{% endif %}
+                    </td>
+                    <td><span class="source-tag">{{ row['source_label'] }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="filter-actions">
+        <a class="btn btn-ghost" href="{{ url_for('wastage.records', **record_query) }}">View all wastage records</a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v6"></path>
+                <path d="M6.5 6.5 12 9l5.5-2.5"></path>
+                <path d="M4 14c0 4 3.6 7 8 7s8-3 8-7"></path>
+            </svg>
+        </span>
+        <h2>No wastage records found</h2>
+        <p>
+            Nothing matches the filters above. Widen the date range or clear a
+            filter to see the wastage position.
+        </p>
+        <a class="btn btn-ghost" href="{{ url_for('wastage.index') }}">Reset filters</a>
+    </div>
+    {% endif %}
+
+    <!-- Method notes ------------------------------------------------------ -->
+    <section class="profile-card">
+        <h2>How these figures are calculated</h2>
+        <ul class="schema-list">
+            {% for note in notes %}
+            <li>{{ note }}</li>
+            {% endfor %}
+        </ul>
+        <p class="profile-note">{{ synthetic_notice }}</p>
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script id="wastage-chart-data" type="application/json">{{ {
+    'fruits': chart_fruits,
+    'district': district,
+    'category': category,
+    'top_fruits': top_fruits,
+    'monthly': monthly
+} | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
