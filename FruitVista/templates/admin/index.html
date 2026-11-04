@@ -23,7 +23,13 @@
     <dl class="account-grid account-grid-compact">
         <div class="account-card">
             <dt>Account type</dt>
-            <dd><span class="role-badge role-admin">Administrator</span></dd>
+            <dd>
+                {% if is_permanent_admin(user) %}
+                <span class="role-badge role-admin">Permanent Administrator</span>
+                {% else %}
+                <span class="role-badge role-secondary">Secondary Administrator</span>
+                {% endif %}
+            </dd>
         </div>
         <div class="account-card">
             <dt>Email address</dt>
@@ -176,6 +182,24 @@
                 <span class="module-state module-state-live">Available</span>
                 <a class="module-link" href="{{ url_for('ml.index') }}">Open module</a>
             </article>
+
+            {% if is_permanent_admin(user) %}
+            <article class="card module-card">
+                <span class="card-icon icon-amber" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M19 8v6"></path>
+                        <path d="M16 11h6"></path>
+                    </svg>
+                </span>
+                <h3>Secondary Admin Management</h3>
+                <p>Review administrator access requests and approve, reject or revoke secondary administrators.</p>
+                <span class="module-state module-state-live">Permanent admin only</span>
+                <a class="module-link" href="{{ url_for('secondary_admins.index') }}">Open module</a>
+            </article>
+            {% endif %}
 
             <article class="card module-card">
                 <span class="card-icon icon-blue" aria-hidden="true">

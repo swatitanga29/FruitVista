@@ -27,11 +27,11 @@
             </li>
 
             {% if current_user %}
-            {% if current_user['role'] == 'admin' %}
+            {% if is_admin(current_user) %}
             {# Administrator: a single Admin dropdown replaces the separate
                dashboard and profile links. Its contents are only rendered for
-               the admin role, and every target is still protected on the
-               server by the admin_required decorator. #}
+               an administrator account, and every target is still protected on
+               the server by the admin_required decorator. #}
             <li class="nav-account">
                 <span class="nav-greeting">Signed in as</span>
                 <span class="nav-user-name">{{ current_user['full_name'] }}</span>

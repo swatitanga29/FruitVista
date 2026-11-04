@@ -3321,5 +3321,146 @@ ul, ol {
     }
 }
 
+/* --------------------------------------------------------------------------
+   22. Secondary administrator access requests
+
+   The role badge, the four request status chips and the request/decision
+   layouts used by the user request page and the permanent administrator's
+   Secondary Admin Management page. The palette matches the existing modules.
+   -------------------------------------------------------------------------- */
+/* Role badge for an approved secondary administrator. */
+.role-secondary {
+    background-color: var(--amber-100);
+    color: var(--amber-600);
+}
+
+/* Request status chips reuse the status-chip layout above. */
+.status-pending {
+    background-color: var(--amber-100);
+    color: var(--amber-600);
+}
+
+.status-approved {
+    background-color: var(--green-100);
+    color: var(--green-700);
+}
+
+.status-rejected {
+    background-color: #fdf2f2;
+    color: #a92525;
+}
+
+.status-revoked {
+    background-color: #eceff0;
+    color: #556058;
+}
+
+/* The user request page: status beside the form on wide screens. */
+.request-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    margin-bottom: 24px;
+}
+
+/* The management page stacks its three sections with even spacing. */
+.request-section {
+    margin-bottom: 24px;
+}
+
+.request-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+}
+
+.request-meta {
+    font-size: 0.86rem;
+    color: var(--ink-500);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The reason the applicant typed, shown as a quiet quotation block. */
+.request-quote {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--green-500);
+    border-radius: var(--radius);
+    background-color: var(--surface-soft);
+}
+
+.request-quote-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+}
+
+.request-quote p {
+    margin: 0;
+    color: var(--ink-900);
+    word-break: break-word;
+}
+
+/* The reason textarea, styled to match the existing inputs. */
+.form-field textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 13px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface);
+    color: var(--ink-900);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.form-field textarea::placeholder {
+    color: var(--ink-300);
+}
+
+.form-field textarea:focus {
+    outline: none;
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(54, 168, 106, 0.18);
+}
+
+.form-field.has-error textarea {
+    border-color: #e0a297;
+    background-color: #fdf6f4;
+}
+
+.form-field.has-error textarea:focus {
+    border-color: #cf4b32;
+    box-shadow: 0 0 0 3px rgba(207, 75, 50, 0.15);
+}
+
+/* The three management tables scroll sideways on a narrow screen. */
+.admin-request-table {
+    min-width: 1040px;
+}
+
+.admin-request-table .reason-cell {
+    white-space: normal;
+    min-width: 240px;
+    max-width: 360px;
+}
+
+@media (max-width: 900px) {
+    .request-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+
 
 

@@ -63,6 +63,7 @@ import database
 import security
 from database import get_db
 from config import get_config
+from models import user as user_repo
 from services import admin_setup
 
 
@@ -78,8 +79,9 @@ def create_app(config_name=None):
 
     # Optional one-time administrator creation for hosting platforms without a
     # shell. It runs after the schema exists, creates the account only when the
-    # ADMIN_* variables are set AND no administrator exists, and returns
-    # quietly otherwise so local runs are unaffected.
+    # administrator variables are set (ADMIN_* or FRUITVISTA_ADMIN_*) AND no
+    # administrator exists, and returns quietly otherwise so local runs are
+    # unaffected.
     if not app.config["TESTING"]:
         with app.app_context():
             admin_setup.seed_from_environment(app)
@@ -101,6 +103,16 @@ def create_app(config_name=None):
 
 def register_routes(app):
     """Register the routes that live directly on the application."""
+
+    # Role helpers are shared with every template so the menu and the role
+    # badges can describe all three roles from one place. These only decide
+    # what is shown: access itself is still enforced by the route decorators.
+    app.jinja_env.globals.update(
+        is_admin=user_repo.is_admin,
+        is_permanent_admin=user_repo.is_permanent_admin,
+        is_secondary_admin=user_repo.is_secondary_admin,
+        role_label=user_repo.role_label,
+    )
 
     @app.context_processor
     def inject_project_identity():

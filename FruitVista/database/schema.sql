@@ -110,7 +110,10 @@ CREATE INDEX IF NOT EXISTS idx_daily_records_source   ON daily_records (record_s
 --
 --   password_hash  -> Werkzeug password hash, never a plain-text password
 --   email          -> case-insensitive, enforced unique by the index below
---   role           -> 'user' (default) or 'admin'; only ever set by the server
+--   role           -> 'user' (default), 'secondary_admin' or 'permanent_admin';
+--                     only ever set by the server. 'admin' is the legacy value
+--                     for the original administrator and is still accepted so
+--                     an older database keeps working (see migration 9).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +123,7 @@ CREATE TABLE IF NOT EXISTS users (
     district      TEXT    NOT NULL,
     password_hash TEXT    NOT NULL,
     role          TEXT    NOT NULL DEFAULT 'user'
-                      CHECK (role IN ('user', 'admin')),
+                      CHECK (role IN ('user', 'admin', 'permanent_admin', 'secondary_admin')),
     last_login_at TEXT,
     created_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
     updated_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
@@ -388,3 +391,58 @@ CREATE INDEX IF NOT EXISTS idx_ml_predictions_type
 
 INSERT OR IGNORE INTO schema_migrations (version, description)
 VALUES (8, 'Machine learning model registry and prediction history');
+
+-- ---------------------------------------------------------------------------
+-- Migration 9 - secondary administrator approval and management
+-- ---------------------------------------------------------------------------
+-- One row = one request by a normal user to become a Secondary Administrator,
+-- together with the decision the Permanent Administrator made on it. No other
+-- table is touched, so every existing account and record is preserved exactly
+-- as it is.
+--
+--   status       -> 'pending'  the request is waiting for a decision
+--                   'approved' the user was promoted to secondary_admin
+--                   'rejected' the request was declined, the user stays 'user'
+--                   'revoked'  an approved secondary administrator was demoted
+--   reviewed_at / reviewed_by -> when and by whom the request was approved or
+--                                rejected (the acting permanent administrator)
+--   revoked_at / revoked_by   -> when and by whom access was later revoked
+--   review_note               -> optional note recorded with a decision
+--
+-- The user's own role lives in ``users.role``; this table is the request and
+-- its audit trail, so approving, rejecting and revoking are all reportable.
+--
+-- The partial unique index below enforces, at the database level, that one
+-- account can have at most one *pending* request at a time. Combined with the
+-- conditional "only while pending" update in the service layer, two
+-- administrators clicking Approve at the same moment can never both succeed.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_requests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    reason      TEXT    NOT NULL,
+
+    status      TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'approved', 'rejected', 'revoked')),
+
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    reviewed_at TEXT,
+    reviewed_by INTEGER,
+    review_note TEXT,
+    revoked_at  TEXT,
+    revoked_by  INTEGER,
+
+    FOREIGN KEY (user_id)     REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES users (id) ON DELETE SET NULL,
+    FOREIGN KEY (revoked_by)  REFERENCES users (id) ON DELETE SET NULL
+);
+
+-- At most one pending request per account, so a duplicate can never be stored
+-- even if two submits arrive together.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_requests_pending
+    ON admin_requests (user_id) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_admin_requests_user   ON admin_requests (user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_requests_status ON admin_requests (status);
+
+INSERT OR IGNORE INTO schema_migrations (version, description)
+VALUES (9, 'Secondary administrator access requests and their approval audit trail');

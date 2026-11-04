@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}Secondary Admin Management &middot; Admin &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('admin.index') }}">Admin Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Secondary Admin Management</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Permanent administrator</span>
+            <h1>Secondary Admin Management</h1>
+            <p>
+                Review requests from registered users who want administrator
+                access, approve or reject them, and revoke an approved
+                administrator's access at any time. Every decision is recorded
+                with the acting administrator and the date.
+            </p>
+        </div>
+    </header>
+
+    <div class="summary-strip">
+        <div class="summary-item">
+            <span class="summary-label">Pending requests</span>
+            <span class="summary-value">{{ pending_count }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Approved secondary admins</span>
+            <span class="summary-value">{{ approved_count }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Decisions recorded</span>
+            <span class="summary-value">{{ history_count }}</span>
+        </div>
+    </div>
+
+    <!-- Pending requests --------------------------------------------------- -->
+    <section class="profile-card request-section">
+        <h2>Pending requests</h2>
+        <p class="profile-note">
+            Each request is from a registered user. Approving it makes the
+            account a secondary administrator; rejecting it leaves the account
+            a normal user.
+        </p>
+
+        {% if pending %}
+        <div class="table-wrap">
+            <table class="data-table admin-request-table">
+                <caption class="visually-hidden">Pending administrator access requests</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Mobile</th>
+                        <th scope="col">District</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Requested</th>
+                        <th scope="col" class="is-actions">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in pending %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.mobile }}</td>
+                        <td>{{ row.district }}</td>
+                        <td class="reason-cell">{{ row.reason }}</td>
+                        <td>{{ row.created_at }}</td>
+                        <td class="is-actions">
+                            <div class="record-actions">
+                                <form class="inline-form" method="post"
+                                      action="{{ url_for('secondary_admins.approve', request_id=row.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-primary btn-sm" type="submit">Approve</button>
+                                </form>
+                                <form class="inline-form" method="post"
+                                      action="{{ url_for('secondary_admins.reject', request_id=row.id) }}"
+                                      data-confirm="Reject {{ row.name }}'s administrator access request? The account stays a normal user.">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-danger btn-sm" type="submit">Reject</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state empty-state-compact">
+            <h2>No pending requests</h2>
+            <p>There are no administrator access requests waiting for a decision.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Approved secondary admins ----------------------------------------- -->
+    <section class="profile-card request-section">
+        <h2>Approved secondary admins</h2>
+        <p class="profile-note">
+            These accounts currently hold administrator access. Revoking access
+            returns the account to a normal user and keeps all of its data.
+        </p>
+
+        {% if approved %}
+        <div class="table-wrap">
+            <table class="data-table admin-request-table">
+                <caption class="visually-hidden">Approved secondary administrators</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">District</th>
+                        <th scope="col">Approved on</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="is-actions">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in approved %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.district }}</td>
+                        <td>{{ row.approved_at }}</td>
+                        <td><span class="status-chip {{ row.status_class }}">{{ row.status }}</span></td>
+                        <td class="is-actions">
+                            <form class="inline-form" method="post"
+                                  action="{{ url_for('secondary_admins.revoke', request_id=row.id) }}"
+                                  data-confirm="Revoke administrator access for {{ row.name }}? Their account and data are kept, but they become a normal user.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-danger btn-sm" type="submit">Revoke access</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state empty-state-compact">
+            <h2>No secondary admins yet</h2>
+            <p>Once a request is approved, the account appears here.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Request history ---------------------------------------------------- -->
+    <section class="profile-card request-section">
+        <h2>Request history</h2>
+        <p class="profile-note">
+            Every approved, rejected and revoked decision, newest first, with the
+            administrator who acted and the date.
+        </p>
+
+        {% if history %}
+        <div class="table-wrap">
+            <table class="data-table admin-request-table">
+                <caption class="visually-hidden">Administrator request decision history</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">District</th>
+                        <th scope="col">Decision</th>
+                        <th scope="col">Action date</th>
+                        <th scope="col">Acting administrator</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in history %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.district }}</td>
+                        <td><span class="status-chip {{ row.status_class }}">{{ row.status }}</span></td>
+                        <td>{{ row.action_date }}</td>
+                        <td>{{ row.actor }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state empty-state-compact">
+            <h2>No decisions yet</h2>
+            <p>Approved, rejected and revoked requests will be listed here.</p>
+        </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

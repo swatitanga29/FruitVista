@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Request admin access &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="dashboard-section container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span class="breadcrumb-current">Request admin access</span>
+    </nav>
+
+    <header class="dashboard-header">
+        <div>
+            <span class="section-eyebrow">Administrator access</span>
+            <h1>Request administrator access</h1>
+            <p>
+                Secondary administrator access is granted by the FruitVista
+                permanent administrator. Send one request with your reason and
+                track the decision here.
+            </p>
+        </div>
+
+        {% if is_admin(user) %}
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('admin.index') }}">Admin dashboard</a>
+        </div>
+        {% endif %}
+    </header>
+
+    {% if errors.form %}
+    <div class="form-alert" role="alert">
+        <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7.5v5"></path>
+                <path d="M12 16.2h.01"></path>
+            </svg>
+        </span>
+        <p>{{ errors.form }}</p>
+    </div>
+    {% endif %}
+
+    <div class="request-layout">
+        <section class="profile-card">
+            <h2>Your request status</h2>
+
+            {% if request_view.pending %}
+            <p class="request-line">
+                <span class="status-chip status-pending">Pending</span>
+                <span class="request-meta">Submitted {{ request_view.pending.created_at }}</span>
+            </p>
+            <p class="profile-note">
+                Your request is waiting for the permanent administrator to
+                review it. You cannot submit a second request while this one is
+                open.
+            </p>
+            <div class="request-quote">
+                <span class="request-quote-label">Your reason</span>
+                <p>{{ request_view.pending.reason }}</p>
+            </div>
+
+            {% elif request_view.latest %}
+            <p class="request-line">
+                <span class="status-chip {{ request_view.latest.status_class }}">
+                    {{ request_view.latest.status }}
+                </span>
+                <span class="request-meta">
+                    {% if request_view.latest.reviewed_at %}
+                    Reviewed {{ request_view.latest.reviewed_at }}
+                    {% else %}
+                    Submitted {{ request_view.latest.created_at }}
+                    {% endif %}
+                </span>
+            </p>
+            <p class="profile-note">
+                {% if request_view.latest.status_key == 'rejected' %}
+                Your previous request was rejected, so your account stays a
+                normal user. You are welcome to send a new request with more
+                detail below.
+                {% elif request_view.latest.status_key == 'revoked' %}
+                Your administrator access was revoked, so your account is a
+                normal user again. You are welcome to send a new request below.
+                {% elif request_view.latest.status_key == 'approved' %}
+                Your request was approved. Your account has administrator
+                access.
+                {% endif %}
+            </p>
+            <div class="request-quote">
+                <span class="request-quote-label">Your previous reason</span>
+                <p>{{ request_view.latest.reason }}</p>
+            </div>
+
+            {% else %}
+            <p class="profile-note">
+                You have not sent a request yet. Use the form to ask the
+                permanent administrator for secondary administrator access.
+            </p>
+            {% endif %}
+        </section>
+
+        <section class="profile-card">
+            <h2>Send a request</h2>
+
+            {% if is_admin(user) %}
+            <p class="profile-note">
+                Your account already has administrator access, so a request is
+                not needed.
+            </p>
+
+            {% elif request_view.pending %}
+            <p class="profile-note">
+                A request is already waiting for review. The form will be
+                available again once the permanent administrator has decided.
+            </p>
+
+            {% else %}
+            <p class="profile-note">
+                Tell the permanent administrator why you need administrator
+                access. Please write at least 10 characters.
+            </p>
+
+            <form class="form" method="post" action="{{ url_for('dashboard.request_admin') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-field{% if errors.reason %} has-error{% endif %}">
+                    <label for="reason">Reason for requesting access</label>
+                    <textarea id="reason" name="reason" rows="6" maxlength="500" required
+                              placeholder="Explain what administrative work you need to do and why."
+                              {% if errors.reason %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>{{ form.reason }}</textarea>
+                    {% if errors.reason %}
+                    <p class="form-error" id="reason-error">{{ errors.reason }}</p>
+                    {% endif %}
+                </div>
+
+                <button class="btn btn-primary" type="submit">Submit request</button>
+            </form>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="profile-card">
+        <h2>How this works</h2>
+        <ul class="schema-list">
+            <li>Only the permanent administrator can approve or reject a request.</li>
+            <li>An approved account becomes a <strong>Secondary Administrator</strong> and can use the administrator area.</li>
+            <li>A secondary administrator cannot approve requests or grant access to anyone else.</li>
+            <li>Access can be revoked at any time; your account and all of your data are kept.</li>
+        </ul>
+    </section>
+</section>
+{% endblock %}

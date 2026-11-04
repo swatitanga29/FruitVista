@@ -17,6 +17,7 @@ Environment variables::
 Usage::
 
     flask --app app create-admin
+    flask --app app verify-admin
 """
 
 import os
@@ -27,8 +28,8 @@ from flask.cli import with_appcontext
 from werkzeug.security import generate_password_hash
 
 from models import user as user_repo
-from models.user import ROLE_ADMIN
-from services import validators
+from models.user import ROLE_PERMANENT_ADMIN, role_label
+from services import admin_setup, validators
 
 
 @click.command("create-admin")
@@ -103,7 +104,87 @@ def create_admin_command(name, email, mobile, district, password):
         mobile=cleaned["mobile"],
         district=cleaned["district"],
         password_hash=generate_password_hash(password_value),
-        role=ROLE_ADMIN,
+        role=ROLE_PERMANENT_ADMIN,
     )
 
     click.echo(f"Administrator created: {cleaned['email']} (id {user_id}).")
+
+
+@click.command("verify-admin")
+@with_appcontext
+def verify_admin_command():
+    """Report on the primary administrator account. Changes nothing.
+
+    Reads the environment variables and the database and prints what it finds:
+    which administrator variables are configured, whether an administrator
+    account exists, whether the configured email matches an account and whether
+    that account holds an administrator role. It never creates, promotes,
+    modifies or deletes anything, and never prints a password or a hash.
+    """
+    report = admin_setup.verify_configuration()
+
+    click.echo("FruitVista - administrator verification (read-only)")
+    click.echo("=" * 54)
+
+    click.echo("")
+    click.echo("Environment variables")
+    for _field, name, is_set in report["environment"]:
+        click.echo(f"  {name:<26} {'set' if is_set else 'not set'}")
+    if report["environment_complete"]:
+        click.echo("  -> every administrator field is configured.")
+    else:
+        click.echo(
+            "  -> not configured: "
+            + admin_setup.describe_missing_fields(report["missing_fields"])
+        )
+
+    click.echo("")
+    click.echo("Administrator account")
+    administrator = report["administrator"]
+    if administrator is None:
+        click.echo("  none found in the database")
+    else:
+        click.echo(f"  id     {administrator['id']}")
+        click.echo(f"  email  {administrator['email']}")
+        click.echo(f"  role   {role_label(administrator['role'])}")
+
+    click.echo("")
+    click.echo("Configured administrator email")
+    if not report["configured_email"]:
+        click.echo("  no administrator email is configured")
+    else:
+        click.echo(f"  email    {report['configured_email']}")
+        account = report["configured_email_account"]
+        if account is None:
+            click.echo("  account  not found: no user uses this address")
+        else:
+            click.echo(f"  account  id {account['id']} (role: {account['role']})")
+            click.echo(
+                "  role     " + ("correct" if report["configured_email_role_ok"] else "NOT an administrator")
+            )
+            if not report["configured_email_role_ok"]:
+                click.echo(
+                    "  note     an existing account is never promoted automatically; "
+                    "see the recovery steps in the documentation"
+                )
+
+    click.echo("")
+    click.echo("Database")
+    click.echo(f"  path  {report['database_path']}")
+    click.echo(
+        "  disk  "
+        + (
+            "outside the project (can be a persistent disk)"
+            if report["database_persistent"]
+            else "inside the project (ephemeral on Render - lost on redeploy)"
+        )
+    )
+
+    click.echo("")
+    if report["administrator"] is not None:
+        click.echo("Result: OK - an administrator account exists.")
+        return
+
+    click.echo("Result: ATTENTION - no administrator account exists.")
+    click.echo("Create one with: flask --app app create-admin")
+    raise SystemExit(1)

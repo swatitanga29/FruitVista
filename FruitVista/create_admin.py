@@ -28,7 +28,7 @@ from werkzeug.security import generate_password_hash
 from app import create_app
 from database import get_db
 from models import user as user_repo
-from models.user import ROLE_ADMIN
+from models.user import PERMANENT_ADMIN_ROLES, ROLE_PERMANENT_ADMIN
 from services import validators
 
 # Details of the primary administrator. Nothing secret is kept here: the
@@ -40,13 +40,16 @@ ADMIN_DISTRICT = "Vijayapura"
 
 
 def existing_administrator():
-    """Return an administrator account that already exists, or ``None``.
+    """Return a permanent administrator account that already exists, or ``None``.
 
-    The role is passed as a bound parameter, so the query stays parameterized.
+    Both the current ``permanent_admin`` value and the legacy ``admin`` value
+    are accepted, so an administrator created before the three-role model is
+    still recognised. The roles are passed as bound parameters.
     """
+    placeholders = ", ".join("?" for _ in PERMANENT_ADMIN_ROLES)
     return get_db().execute(
-        "SELECT id, full_name, email, role FROM users WHERE role = ? LIMIT 1",
-        (ROLE_ADMIN,),
+        f"SELECT id, full_name, email, role FROM users WHERE role IN ({placeholders}) LIMIT 1",
+        PERMANENT_ADMIN_ROLES,
     ).fetchone()
 
 
@@ -119,7 +122,7 @@ def create_primary_admin(full_name, email, mobile, district, password, districts
         mobile=cleaned["mobile"],
         district=cleaned["district"],
         password_hash=generate_password_hash(password_value),
-        role=ROLE_ADMIN,
+        role=ROLE_PERMANENT_ADMIN,
     )
 
     return user_id, cleaned["email"]
@@ -139,7 +142,7 @@ def main():
         print(f"Email     : {ADMIN_EMAIL}")
         print(f"Mobile    : {ADMIN_MOBILE}")
         print(f"District  : {ADMIN_DISTRICT}")
-        print(f"Role      : {ROLE_ADMIN}")
+        print(f"Role      : {ROLE_PERMANENT_ADMIN}")
         print()
         print("The password you type below is never shown or saved as text.")
         print()

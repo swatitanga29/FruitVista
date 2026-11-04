@@ -1,13 +1,16 @@
 """Session and role helpers that protect FruitVista pages.
 
-Two decorators guard routes:
+Three decorators guard routes:
 
-* ``login_required``  - any signed-in account,
-* ``admin_required``  - administrators only (regular users get 403).
+* ``login_required``            - any signed-in account,
+* ``admin_required``            - any administrator (permanent or secondary),
+* ``permanent_admin_required``  - the original full-authority administrator only.
 
-Both check the server-side session and the role stored in the database on
-every request. Navigation links are hidden as a convenience, but access is
-always decided here, not by what the browser displays.
+Every decorator checks the server-side session and the role stored in the
+database on every request. Navigation links are hidden as a convenience, but
+access is always decided here, not by what the browser displays. This is what
+enforces the rule that only the permanent administrator may approve, reject or
+revoke secondary administrators.
 """
 
 from functools import wraps
@@ -45,10 +48,10 @@ def login_required(view):
 
 
 def admin_required(view):
-    """Allow administrators only.
+    """Allow any administrator (permanent or secondary).
 
     Anonymous visitors are redirected to the login page; signed-in accounts
-    without the ``admin`` role receive an access-denied (403) response.
+    without an administrator role receive an access-denied (403) response.
     """
 
     @wraps(view)
@@ -58,7 +61,31 @@ def admin_required(view):
         if user is None:
             return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
-        if user["role"] != "admin":
+        if not user_repo.is_admin(user):
+            abort(403)
+
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+def permanent_admin_required(view):
+    """Allow the original, full-authority administrator only.
+
+    This guards the Secondary Admin Management area. A secondary
+    administrator is refused with a 403 even though they may use the rest of
+    the administrator area, so they can never approve, reject or revoke other
+    administrators.
+    """
+
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        user = g.get("user")
+
+        if user is None:
+            return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
+
+        if not user_repo.is_permanent_admin(user):
             abort(403)
 
         return view(*args, **kwargs)
@@ -68,7 +95,7 @@ def admin_required(view):
 
 def landing_endpoint(user):
     """Return the endpoint a signed-in account should be sent to after login."""
-    return "admin.index" if user["role"] == "admin" else "dashboard.index"
+    return "admin.index" if user_repo.is_admin(user) else "dashboard.index"
 
 
 def redirect_target(default=None):

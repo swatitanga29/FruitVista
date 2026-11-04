@@ -17,6 +17,19 @@ import click
 from flask import current_app, g
 
 
+def ensure_database_directory(database_path):
+    """Create the folder that will hold ``database_path`` when it is missing.
+
+    A bare file name has no folder part to create, so it is skipped; the file
+    itself is created by SQLite on the first connection. This keeps a custom
+    ``DATABASE_PATH`` (for example a mounted persistent disk) working without
+    touching any existing record.
+    """
+    directory = os.path.dirname(database_path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+
+
 def get_db():
     """Return the SQLite connection bound to the current app context.
 
@@ -26,7 +39,7 @@ def get_db():
     """
     if "db" not in g:
         database_path = current_app.config["DATABASE"]
-        os.makedirs(os.path.dirname(database_path), exist_ok=True)
+        ensure_database_directory(database_path)
 
         g.db = sqlite3.connect(database_path, detect_types=sqlite3.PARSE_DECLTYPES)
         g.db.row_factory = sqlite3.Row
@@ -93,6 +106,85 @@ def seed_reference_data():
     db.commit()
 
 
+def _users_role_check_is_outdated():
+    """Return ``True`` when ``users`` has a role CHECK that rejects the new roles.
+
+    A table built by the earlier schema carries ``CHECK (role IN ('user',
+    'admin'))``, which would refuse ``permanent_admin`` and ``secondary_admin``.
+    A table whose role column was added by migration 3 has no CHECK at all and
+    needs no rebuild. A table built by the current schema already lists the new
+    roles. Only the first case has to be widened.
+    """
+    row = get_db().execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+    ).fetchone()
+    ddl = (row["sql"] or "") if row is not None else ""
+    return "CHECK" in ddl.upper() and "secondary_admin" not in ddl
+
+
+def _rebuild_users_for_new_roles():
+    """Widen the ``users.role`` constraint, preserving every row and id.
+
+    SQLite cannot alter a CHECK constraint in place, so the table is rebuilt
+    with the documented procedure: a new table is created, every row is copied
+    (including its ``id``, so no relationship changes), the legacy ``admin``
+    role is renamed to ``permanent_admin``, the old table is replaced and the
+    unique email index is recreated. Everything happens in one transaction, so
+    a failure rolls back and leaves the original table exactly as it was.
+    """
+    db = get_db()
+
+    # PRAGMA foreign_keys is a no-op inside a transaction, so make sure none is
+    # open and switch the enforcement off for the duration of the rebuild.
+    if db.in_transaction:
+        db.commit()
+
+    db.execute("PRAGMA foreign_keys = OFF")
+    try:
+        db.execute("BEGIN")
+        try:
+            db.execute(
+                """
+                CREATE TABLE users_rebuilt (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    full_name     TEXT    NOT NULL,
+                    email         TEXT    COLLATE NOCASE NOT NULL,
+                    mobile        TEXT    NOT NULL,
+                    district      TEXT    NOT NULL,
+                    password_hash TEXT    NOT NULL,
+                    role          TEXT    NOT NULL DEFAULT 'user'
+                                      CHECK (role IN ('user', 'admin', 'permanent_admin', 'secondary_admin')),
+                    last_login_at TEXT,
+                    created_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+                    updated_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+                )
+                """
+            )
+            db.execute(
+                """
+                INSERT INTO users_rebuilt
+                    (id, full_name, email, mobile, district, password_hash,
+                     role, last_login_at, created_at, updated_at)
+                SELECT id, full_name, email, mobile, district, password_hash,
+                       CASE WHEN role = 'admin' THEN 'permanent_admin' ELSE role END,
+                       last_login_at, created_at, updated_at
+                FROM users
+                """
+            )
+            db.execute("DROP TABLE users")
+            db.execute("ALTER TABLE users_rebuilt RENAME TO users")
+            db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique "
+                "ON users (email COLLATE NOCASE)"
+            )
+            db.execute("COMMIT")
+        except Exception:
+            db.execute("ROLLBACK")
+            raise
+    finally:
+        db.execute("PRAGMA foreign_keys = ON")
+
+
 def apply_migrations():
     """Apply additive schema changes that older databases still need.
 
@@ -126,10 +218,34 @@ def apply_migrations():
 
     db.commit()
 
+    # Migration 9: the three-role model (user / secondary_admin /
+    # permanent_admin). A table created by the earlier schema must be rebuilt
+    # first, because its CHECK constraint would reject the new role values.
+    if _users_role_check_is_outdated():
+        _rebuild_users_for_new_roles()
+
+    # Rename the original administrator's legacy value to ``permanent_admin``.
+    # It only ever promotes ``admin`` to the new name - an existing
+    # administrator is never downgraded, and repeated runs change nothing.
+    get_db().execute(
+        "UPDATE users SET role = 'permanent_admin' WHERE role = 'admin'"
+    )
+
+    get_db().execute(
+        "INSERT OR IGNORE INTO schema_migrations (version, description) "
+        "VALUES (?, ?)",
+        (
+            9,
+            "Secondary administrator access requests and their approval audit trail",
+        ),
+    )
+
+    get_db().commit()
+
 
 def bootstrap(app):
     """Prepare the database before the first request is served."""
-    os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
+    ensure_database_directory(app.config["DATABASE"])
     with app.app_context():
         init_db()
         apply_migrations()

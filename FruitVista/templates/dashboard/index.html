@@ -38,13 +38,69 @@
         </div>
         <div class="account-card">
             <dt>Account type</dt>
-            <dd>{{ user['role']|capitalize }}</dd>
+            <dd>
+                {% if is_permanent_admin(user) %}
+                <span class="role-badge role-admin">Permanent Administrator</span>
+                {% elif is_secondary_admin(user) %}
+                <span class="role-badge role-secondary">Secondary Administrator</span>
+                {% else %}
+                <span class="role-badge role-user">User</span>
+                {% endif %}
+            </dd>
         </div>
         <div class="account-card">
             <dt>Registered on</dt>
             <dd>{{ user['created_at'] }}</dd>
         </div>
     </dl>
+
+    {% if not is_admin(user) %}
+    <section class="dashboard-next">
+        <header class="section-header">
+            <span class="section-eyebrow">Administrator access</span>
+            <h2>Request administrator access</h2>
+            <p>
+                {% if request_view.pending %}
+                Your request is waiting for the permanent administrator to
+                review it.
+                {% elif request_view.latest %}
+                Your last request has been decided. You can review the outcome
+                and send a new request from the request page.
+                {% else %}
+                FruitVista administrators review requests from registered
+                users. Ask for secondary administrator access and check the
+                decision on the request page.
+                {% endif %}
+            </p>
+        </header>
+
+        {% if request_view.pending or request_view.latest %}
+        <p class="request-line">
+            {% if request_view.pending %}
+            <span class="status-chip status-pending">Pending</span>
+            <span class="request-meta">Submitted {{ request_view.pending.created_at }}</span>
+            {% else %}
+            <span class="status-chip {{ request_view.latest.status_class }}">
+                {{ request_view.latest.status }}
+            </span>
+            <span class="request-meta">
+                {% if request_view.latest.reviewed_at %}
+                Reviewed {{ request_view.latest.reviewed_at }}
+                {% else %}
+                Submitted {{ request_view.latest.created_at }}
+                {% endif %}
+            </span>
+            {% endif %}
+        </p>
+        {% endif %}
+
+        <div class="dashboard-actions">
+            <a class="btn btn-primary" href="{{ url_for('dashboard.request_admin') }}">
+                {% if request_view.pending %}View my request{% else %}Request admin access{% endif %}
+            </a>
+        </div>
+    </section>
+    {% endif %}
 
     <section class="dashboard-next">
         <header class="section-header">

@@ -74,8 +74,12 @@ def authenticate_user(email, password):
 
 
 def is_admin(user):
-    """Return ``True`` when ``user`` is an administrator account."""
-    return bool(user) and user["role"] == "admin"
+    """Return ``True`` when ``user`` is an administrator (permanent or secondary).
+
+    Delegates to the role model so the two administrator roles are always
+    recognised together, including the legacy ``admin`` value.
+    """
+    return user_repo.is_admin(user)
 
 
 def update_profile(user_id, source, districts):

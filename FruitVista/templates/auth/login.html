@@ -29,7 +29,8 @@
 </div>
 {% endif %}
 
-<form class="form" method="post" action="{{ url_for('auth.login') }}">
+<form class="form" method="post"
+      action="{{ url_for('admin.login') if admin_login else url_for('auth.login') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ next_url or '' }}">
 
@@ -98,7 +99,12 @@
 </form>
 
 <p class="auth-switch">
+    {% if admin_login %}
+    Not an administrator?
+    <a href="{{ url_for('auth.login') }}">Go to the normal sign-in page</a>
+    {% else %}
     New to {{ app_name }}?
     <a href="{{ url_for('auth.register') }}">Create an account</a>
+    {% endif %}
 </p>
 {% endblock %}

@@ -22,6 +22,25 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 # without ever touching a stored record.
 MODEL_DIR = os.path.join(BASE_DIR, "ml_models")
 
+# The SQLite file holds every historical and manually entered record. It lives
+# beside the code by default. A hosting platform whose own filesystem is
+# recreated on each deploy (Render) can point the application at a mounted
+# persistent disk instead, using the DATABASE_PATH environment variable.
+DEFAULT_DATABASE_PATH = os.path.join(DATABASE_DIR, "fruitvista.db")
+
+
+def resolve_database_path():
+    """Return the SQLite file the application should use.
+
+    ``DATABASE_PATH`` overrides the default when it holds a non-empty value, so
+    the records can be kept on a persistent disk across redeploys. When the
+    variable is not set the original project path is returned unchanged, so an
+    existing local database is never moved or recreated.
+    """
+    configured = (os.environ.get("DATABASE_PATH") or "").strip()
+    return configured or DEFAULT_DATABASE_PATH
+
+
 # ---------------------------------------------------------------------------
 # Project identity (appears on the login page, dashboard, reports and docs)
 # ---------------------------------------------------------------------------
@@ -113,7 +132,9 @@ class Config:
 
     # --- Database ---------------------------------------------------------
     # One common SQLite database holds historical AND manually entered records.
-    DATABASE = os.path.join(DATABASE_DIR, "fruitvista.db")
+    # The path is resolved at start-up: DATABASE_PATH may redirect it to a
+    # persistent disk, otherwise the original project path is used unchanged.
+    DATABASE = resolve_database_path()
     SCHEMA_FILE = os.path.join(DATABASE_DIR, "schema.sql")
 
     # --- Data -------------------------------------------------------------
