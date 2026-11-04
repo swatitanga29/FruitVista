@@ -50,8 +50,9 @@ def login_required(view):
 def admin_required(view):
     """Allow any administrator (permanent or secondary).
 
-    Anonymous visitors are redirected to the login page; signed-in accounts
-    without an administrator role receive an access-denied (403) response.
+    Anonymous visitors are redirected to the administrator sign-in page;
+    signed-in accounts without an administrator role receive an access-denied
+    (403) response.
     """
 
     @wraps(view)
@@ -59,7 +60,7 @@ def admin_required(view):
         user = g.get("user")
 
         if user is None:
-            return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
+            return redirect(url_for("admin.login", next=request.full_path.rstrip("?")))
 
         if not user_repo.is_admin(user):
             abort(403)
@@ -75,7 +76,7 @@ def permanent_admin_required(view):
     This guards the Secondary Admin Management area. A secondary
     administrator is refused with a 403 even though they may use the rest of
     the administrator area, so they can never approve, reject or revoke other
-    administrators.
+    administrators. Anonymous visitors go to the administrator sign-in page.
     """
 
     @wraps(view)
@@ -83,7 +84,7 @@ def permanent_admin_required(view):
         user = g.get("user")
 
         if user is None:
-            return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
+            return redirect(url_for("admin.login", next=request.full_path.rstrip("?")))
 
         if not user_repo.is_permanent_admin(user):
             abort(403)
