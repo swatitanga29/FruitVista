@@ -104,15 +104,26 @@ def validate_mobile(value):
 
 
 def validate_district(value, districts):
-    """Accept only one of the five supported districts."""
+    """Accept one of the supported districts, ignoring case and spacing.
+
+    The value returned is always the project's own spelling, so a district
+    typed into an environment variable as ``mysuru``, ``MYSURU`` or
+    ``Bengaluru  Urban`` is accepted and stored as ``Mysuru`` or
+    ``Bengaluru Urban``. A name that is not one of the supported districts is
+    still refused, so no unsupported value can ever be stored.
+    """
     district = clean_text(value)
 
     if not district:
         return None, "Please select your district."
-    if district not in districts:
-        return None, "Please choose one of the supported districts."
 
-    return district, None
+    normalised = re.sub(r"\s+", " ", district).casefold()
+
+    for supported in districts:
+        if supported.casefold() == normalised:
+            return supported, None
+
+    return None, "Please choose one of the supported districts."
 
 
 def validate_password(value):

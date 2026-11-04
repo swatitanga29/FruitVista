@@ -178,8 +178,10 @@ def seed_from_environment(app):
 
     # Partly configured: name only the missing variables, never any value.
     if missing:
-        app.logger.warning(
-            "Administrator setup skipped: no value is set for: %s.",
+        app.logger.error(
+            "Administrator setup did NOT create an account. No value is set "
+            "for: %s. Set every administrator variable and restart the "
+            "application.",
             describe_missing_fields(missing),
         )
         return "skipped"
